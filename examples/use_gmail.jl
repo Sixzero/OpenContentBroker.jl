@@ -2,22 +2,21 @@ using OpenContentBroker
 using DotEnv
 
 # Load environment variables from .env
-DotEnv.load()
+DotEnv.load!()
 
 # Get credentials from environment variables
 credentials = Dict(
     "client_id" => get(ENV, "GMAIL_CLIENT_ID", ""),
-    "client_secret" => get(ENV, "GMAIL_CLIENT_SECRET", ""),
-    "refresh_token" => get(ENV, "GMAIL_REFRESH_TOKEN", "")
+    "client_secret" => get(ENV, "GMAIL_CLIENT_SECRET", "")
 )
 
-# Validate credentials exist
-all(!=(""), values(credentials)) || error("Missing Gmail credentials in environment variables")
+# Validate client credentials exist
+all(!=(""), values(credentials)) || error("Missing Gmail client credentials in environment variables")
 
-# Create adapter instance
+# Create adapter instance and it will handle authorization if needed
 adapter = GmailAdapter(credentials)
 
-# Get new messages
+# Get new messages (token handling is fully automatic now)
 messages = get_new_content(adapter)
 
 # Process each message

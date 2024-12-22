@@ -25,14 +25,12 @@ end
 
 struct GmailAdapter <: MessageBasedAdapter{GmailMessage, MessageMetadata}
     config::AdapterConfig
-    oauth::OAuth2Config
-    token::Ref{Union{OAuth2Token, Nothing}}
-    token_storage::TokenStorage
+    token_manager::OAuth2TokenManager
     last_history_id::Union{String, Nothing}
 end
 
 # Updated constructor
-function GmailAdapter(credentials::Dict{String, String}, token_storage::TokenStorage=EnvFileStorage())
+function GmailAdapter(credentials::Dict{String, String}, token_storage::TokenStorage=FileStorage("OpenContentBroker"))
     config = AdapterConfig(
         Minute(1),
         Dict("max_retries" => 3, "retry_delay" => 1),
@@ -48,37 +46,25 @@ function GmailAdapter(credentials::Dict{String, String}, token_storage::TokenSto
         credentials["client_secret"]
     )
     
-    GmailAdapter(config, oauth, Ref{Union{OAuth2Token, Nothing}}(nothing), token_storage, nothing)
+    token_manager = OAuth2TokenManager(oauth, token_storage)
+    GmailAdapter(config, token_manager, nothing)
 end
 
-# Token storage methods remain the same
-function store_refresh_token!(adapter::GmailAdapter, token::String)
-    store_token!(adapter.token_storage, "GMAIL_REFRESH_TOKEN", token)
-end
-
-function get_refresh_token(adapter::GmailAdapter)
-    get_token(adapter.token_storage, "GMAIL_REFRESH_TOKEN")
-end
-
-# Simple token management
+# Remove token-related methods from GmailAdapter
 function ensure_token!(adapter::GmailAdapter)
-    if isnothing(adapter.token[])
-        refresh_token = get_refresh_token(adapter)
-        isnothing(refresh_token) && throw(ArgumentError("No refresh token available"))
-        adapter.token[] = refresh_access_token(adapter.oauth, refresh_token)
-    end
-    adapter.token[].access_token
+    ensure_access_token!(adapter.token_manager)
 end
 
-"""
-    authorize!(adapter::GmailAdapter) -> Nothing
-
-Start OAuth2 authorization flow for Gmail.
-"""
+# Add this new method
 function authorize!(adapter::GmailAdapter)
-    start_oauth_flow!(adapter.oauth) do token
-        store_refresh_token!(adapter, token.refresh_token)
-        adapter.token[] = token
+    authorize!(adapter.token_manager)
+end
+
+# Modify the authorize! method for the token manager
+function authorize!(manager::OAuth2TokenManager)
+    start_oauth_flow!(manager.config; service_name="Gmail") do token
+        store_token!(manager.storage, "REFRESH_TOKEN", token.refresh_token)
+        manager.token[] = token
     end
 end
 
@@ -113,42 +99,64 @@ function validate_content(adapter::GmailAdapter, content::ContentItem)
     true
 end
 
+const GMAIL_API_BASE = "https://www.googleapis.com/gmail/v1"
+
 # Get new messages since last check
 function get_new_content(adapter::GmailAdapter)
-    # In real implementation, would use Gmail API's history.list or messages.list
-    # For now, return mock data
-    mock_message = Dict(
-        "id" => "msg123",
-        "threadId" => "thread123",
-        "labelIds" => ["INBOX"],
-        "payload" => Dict(
-            "headers" => [
-                Dict("name" => "Subject", "value" => "Test Email"),
-                Dict("name" => "From", "value" => "sender@example.com"),
-                Dict("name" => "To", "value" => "recipient@example.com")
-            ],
-            "body" => Dict(
-                "data" => base64encode("This is a test email body.")
-            )
-        )
+    access_token = ensure_token!(adapter)
+    
+    # Prepare headers with token
+    headers = [
+        "Authorization" => "Bearer $access_token",
+        "Accept" => "application/json"
+    ]
+    
+    # List messages matching our criteria
+    query = Dict(
+        "maxResults" => get(adapter.config.filters, "max_results", 100),
+        "labelIds" => join(get(adapter.config.filters, "labels", ["INBOX"]), ",")
     )
     
-    raw_content = Vector{UInt8}(JSON3.write(mock_message))
-    processed = process_raw(adapter, raw_content)
+    response = HTTP.get(
+        "$GMAIL_API_BASE/users/me/messages?$(URIs.escapeuri(query))",
+        headers
+    )
     
-    [ContentItem(
-        processed.message_id,
-        raw_content,
-        processed,
-        MessageMetadata(
-            "gmail",
-            processed.from,
-            processed.to,
-            processed.thread_id,
+    messages_data = JSON3.read(response.body)
+    isnothing(messages_data.messages) && return ContentItem[]
+    
+    # Fetch full message details for each message
+    items = ContentItem[]
+    for msg in messages_data.messages
+        msg_response = HTTP.get(
+            "$GMAIL_API_BASE/users/me/messages/$(msg.id)?format=full",
+            headers
+        )
+        
+        raw_content = msg_response.body
+        processed = process_raw(adapter, raw_content)
+        
+        push!(items, ContentItem(
+            processed.message_id,
+            raw_content,
+            processed,
+            MessageMetadata(
+                "gmail",
+                processed.from,
+                processed.to,
+                processed.thread_id,
+                now()
+            ),
             now()
-        ),
-        now()
-    )]
+        ))
+    end
+    
+    # Update last history ID if available
+    if !isempty(items) && haskey(messages_data.messages[1], :historyId)
+        adapter.last_history_id = string(messages_data.messages[1].historyId)
+    end
+    
+    items
 end
 
 # Implement base get_content for specific queries

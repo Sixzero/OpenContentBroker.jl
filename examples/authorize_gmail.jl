@@ -1,7 +1,7 @@
 using OpenContentBroker
 using DotEnv
 
-DotEnv.load()
+DotEnv.load!()
 
 client_id = get(ENV, "GMAIL_CLIENT_ID", "")
 client_secret = get(ENV, "GMAIL_CLIENT_SECRET", "")
