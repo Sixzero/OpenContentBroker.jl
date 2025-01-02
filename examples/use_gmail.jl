@@ -22,7 +22,7 @@ adapter = GmailAdapter(credentials)
 cached_adapter = CacheLayer(adapter)
 
 # Get messages from last 2 days - this will cache the results
-messages = get_new_content(cached_adapter, now() - Day(2))
+messages = get_new_content(cached_adapter, now() - Hour(5))
 
 # Next time you run this with the same date, it will use cache and only fetch new messages
 
@@ -31,6 +31,7 @@ for msg in messages
     email = msg.processed_content
     println("Subject: $(email.subject)")
     println("From: $(email.from)")
+    println("From: $(email.date)")
     println("Body: $(email.body[1:min(100,length(email.body))])...")
     println("-" ^ 50)
 end

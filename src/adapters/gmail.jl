@@ -25,6 +25,7 @@ struct GmailMessage
     message_id::String
     thread_id::String
     labels::Vector{String}
+    date::DateTime
 end
 
 struct GmailAdapter <: OpenCacheLayer.ChatsLikeAdapter
@@ -76,6 +77,18 @@ function process_raw(adapter::GmailAdapter, raw::Vector{UInt8})
         body = String(base64decode(replace(msg_data.payload.body.data, '-'=>'+', '_'=>'/')))
     end
     
+    # Extract message date from internalDate field (milliseconds since epoch)
+    timestamp = try
+        unix2datetime(parse(Int, msg_data.internalDate) / 1000)
+    catch
+        # Fallback to Date header if internalDate fails
+        try
+            DateTime(get(headers, "Date", ""), dateformat"e, d u y H:M:S Z")
+        catch
+            now()  # Final fallback
+        end
+    end
+    
     GmailMessage(
         get(headers, "Subject", ""),
         body,
@@ -83,7 +96,8 @@ function process_raw(adapter::GmailAdapter, raw::Vector{UInt8})
         split(get(headers, "To", ""), ","),
         msg_data.id,
         msg_data.threadId,
-        msg_data.labelIds
+        msg_data.labelIds,
+        timestamp
     )
 end
 
@@ -97,7 +111,7 @@ end
 const GMAIL_API_BASE = "https://www.googleapis.com/gmail/v1"
 
 # Get new messages since last check
-function get_new_content(adapter::GmailAdapter, from::DateTime=now() - Day(1))
+function OpenCacheLayer.get_new_content(adapter::GmailAdapter, from::DateTime=now() - Day(1))
     access_token = ensure_token!(adapter)
     
     headers = [
@@ -105,13 +119,13 @@ function get_new_content(adapter::GmailAdapter, from::DateTime=now() - Day(1))
         "Accept" => "application/json"
     ]
     
-    # Convert DateTime to Gmail's query format (YYYY/MM/DD)
-    after = Dates.format(from, "yyyy/mm/dd")
+    # Convert DateTime to Unix timestamp (seconds since epoch)
+    after_ts = floor(Int, datetime2unix(from))
     
     query = Dict(
         "maxResults" => get(adapter.config.filters, "max_results", 100),
         "labelIds" => join(get(adapter.config.filters, "labels", ["INBOX"]), ","),
-        "q" => "after:$after"
+        "q" => "after:$(after_ts)"  # Using internal date with Unix timestamp
     )
     
     response = HTTP.get(
@@ -141,9 +155,9 @@ function get_new_content(adapter::GmailAdapter, from::DateTime=now() - Day(1))
                 processed.from,
                 processed.to,
                 processed.thread_id,  # Gmail uses thread_id as chat_id
-                now()
+                processed.date  # Use the message's actual date
             ),
-            now()
+            processed.date  # Use the message's actual date
         ))
     end
     
@@ -154,4 +168,10 @@ end
 function get_content(adapter::GmailAdapter, query::Dict)
     from = get(query, "from", now() - Day(1))
     get_new_content(adapter, from)
+end
+
+# Add after the adapter struct definition
+function OpenCacheLayer.get_adapter_hash(adapter::GmailAdapter)
+    # Use client_id as unique identifier for the credentials
+    adapter.token_manager.config.client_id
 end
