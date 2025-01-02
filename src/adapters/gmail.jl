@@ -3,6 +3,10 @@ using JSON3
 using Dates
 using Base64
 using URIs
+using OpenCacheLayer  # Add this to use the base types
+# Add this import specifically for the get_new_content function
+import OpenCacheLayer: get_new_content
+
 
 # OAuth2 configuration for Gmail
 const GMAIL_OAUTH_CONFIG = Dict(
@@ -23,13 +27,12 @@ struct GmailMessage
     labels::Vector{String}
 end
 
-struct GmailAdapter <: MessageBasedAdapter{GmailMessage, MessageMetadata}
+struct GmailAdapter <: OpenCacheLayer.ChatsLikeAdapter
     config::AdapterConfig
     token_manager::OAuth2TokenManager
-    last_history_id::Union{String, Nothing}
 end
 
-# Updated constructor
+# Updated constructor without last_history_id
 function GmailAdapter(credentials::Dict{String, String}, token_storage::TokenStorage=FileStorage("OpenContentBroker"))
     config = AdapterConfig(
         Minute(1),
@@ -47,7 +50,7 @@ function GmailAdapter(credentials::Dict{String, String}, token_storage::TokenSto
     )
     
     token_manager = OAuth2TokenManager(oauth, token_storage)
-    GmailAdapter(config, token_manager, nothing)
+    GmailAdapter(config, token_manager)
 end
 
 # Remove token-related methods from GmailAdapter
@@ -58,14 +61,6 @@ end
 # Add this new method
 function authorize!(adapter::GmailAdapter)
     authorize!(adapter.token_manager)
-end
-
-# Modify the authorize! method for the token manager
-function authorize!(manager::OAuth2TokenManager)
-    start_oauth_flow!(manager.config; service_name="Gmail") do token
-        store_token!(manager.storage, "REFRESH_TOKEN", token.refresh_token)
-        manager.token[] = token
-    end
 end
 
 # Process raw Gmail message data
@@ -102,19 +97,21 @@ end
 const GMAIL_API_BASE = "https://www.googleapis.com/gmail/v1"
 
 # Get new messages since last check
-function get_new_content(adapter::GmailAdapter)
+function get_new_content(adapter::GmailAdapter, from::DateTime=now() - Day(1))
     access_token = ensure_token!(adapter)
     
-    # Prepare headers with token
     headers = [
         "Authorization" => "Bearer $access_token",
         "Accept" => "application/json"
     ]
     
-    # List messages matching our criteria
+    # Convert DateTime to Gmail's query format (YYYY/MM/DD)
+    after = Dates.format(from, "yyyy/mm/dd")
+    
     query = Dict(
         "maxResults" => get(adapter.config.filters, "max_results", 100),
-        "labelIds" => join(get(adapter.config.filters, "labels", ["INBOX"]), ",")
+        "labelIds" => join(get(adapter.config.filters, "labels", ["INBOX"]), ","),
+        "q" => "after:$after"
     )
     
     response = HTTP.get(
@@ -125,7 +122,6 @@ function get_new_content(adapter::GmailAdapter)
     messages_data = JSON3.read(response.body)
     isnothing(messages_data.messages) && return ContentItem[]
     
-    # Fetch full message details for each message
     items = ContentItem[]
     for msg in messages_data.messages
         msg_response = HTTP.get(
@@ -144,16 +140,11 @@ function get_new_content(adapter::GmailAdapter)
                 "gmail",
                 processed.from,
                 processed.to,
-                processed.thread_id,
+                processed.thread_id,  # Gmail uses thread_id as chat_id
                 now()
             ),
             now()
         ))
-    end
-    
-    # Update last history ID if available
-    if !isempty(items) && haskey(messages_data.messages[1], :historyId)
-        adapter.last_history_id = string(messages_data.messages[1].historyId)
     end
     
     items
@@ -161,7 +152,6 @@ end
 
 # Implement base get_content for specific queries
 function get_content(adapter::GmailAdapter, query::Dict)
-    # In real implementation, would use Gmail API's messages.list with query parameters
-    # For now, delegate to get_new_content
-    get_new_content(adapter)
+    from = get(query, "from", now() - Day(1))
+    get_new_content(adapter, from)
 end

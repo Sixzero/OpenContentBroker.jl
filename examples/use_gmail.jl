@@ -1,5 +1,7 @@
+using OpenCacheLayer
 using OpenContentBroker
 using DotEnv
+using Dates
 
 # Load environment variables from .env
 DotEnv.load!()
@@ -16,8 +18,13 @@ all(!=(""), values(credentials)) || error("Missing Gmail client credentials in e
 # Create adapter instance and it will handle authorization if needed
 adapter = GmailAdapter(credentials)
 
-# Get new messages (token handling is fully automatic now)
-messages = get_new_content(adapter)
+# Wrap adapter with cache layer
+cached_adapter = CacheLayer(adapter)
+
+# Get messages from last 2 days - this will cache the results
+messages = get_new_content(cached_adapter, now() - Day(2))
+
+# Next time you run this with the same date, it will use cache and only fetch new messages
 
 # Process each message
 for msg in messages

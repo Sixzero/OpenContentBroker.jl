@@ -4,11 +4,11 @@ using Dates
 using Base64
 using HTTP
 using JSON3
+using OpenCacheLayer
 
 include("types.jl")
-include("interface.jl")
 include("token_storage.jl")
-include("oauth2.jl")  
+include("oauth2.jl")
 include("adapters/gmail.jl")
 
 # Export core types
