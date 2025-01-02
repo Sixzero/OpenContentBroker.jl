@@ -1,7 +1,7 @@
 # Core types for content adapters
-abstract type ContentAdapter{ContentType, MetadataType} end
-abstract type MessageBasedAdapter{ContentType, MetadataType} <: ContentAdapter{ContentType, MetadataType} end
-abstract type StatusBasedAdapter{ContentType, MetadataType} <: ContentAdapter{ContentType, MetadataType} end
+abstract type ContentAdapter end
+abstract type ChatsLikeAdapter <: ContentAdapter end
+abstract type StatusBasedAdapter <: ContentAdapter end
 
 # Base content item type
 struct ContentItem{ContentType, MetadataType}
@@ -17,7 +17,7 @@ struct MessageMetadata
     source_id::String
     sender::String
     recipients::Vector{String}
-    thread_id::Union{String, Nothing}
+    chat_id::Union{String, Nothing}
     timestamp::DateTime
 end
 
