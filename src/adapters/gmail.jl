@@ -111,7 +111,7 @@ end
 const GMAIL_API_BASE = "https://www.googleapis.com/gmail/v1"
 
 # Get new messages since last check
-function OpenCacheLayer.get_new_content(adapter::GmailAdapter, from::DateTime=now() - Day(1))
+function OpenCacheLayer.get_new_content(adapter::GmailAdapter; from::DateTime=now() - Day(1), to::Union{DateTime,Nothing}=nothing)
     access_token = ensure_token!(adapter)
     
     headers = [
@@ -121,11 +121,14 @@ function OpenCacheLayer.get_new_content(adapter::GmailAdapter, from::DateTime=no
     
     # Convert DateTime to Unix timestamp (seconds since epoch)
     after_ts = floor(Int, datetime2unix(from))
+    before_ts = isnothing(to) ? nothing : floor(Int, datetime2unix(to))
     
     query = Dict(
         "maxResults" => get(adapter.config.filters, "max_results", 100),
         "labelIds" => join(get(adapter.config.filters, "labels", ["INBOX"]), ","),
-        "q" => "after:$(after_ts)"  # Using internal date with Unix timestamp
+        "q" => isnothing(before_ts) ? 
+            "after:$(after_ts)" : 
+            "after:$(after_ts) before:$(before_ts)"
     )
     
     response = HTTP.get(
@@ -134,10 +137,15 @@ function OpenCacheLayer.get_new_content(adapter::GmailAdapter, from::DateTime=no
     )
     
     messages_data = JSON3.read(response.body)
-    isnothing(messages_data.messages) && return ContentItem[]
     
-    items = ContentItem[]
-    for msg in messages_data.messages
+    # Early return for empty results
+    (!haskey(messages_data, :messages) || isnothing(messages_data.messages)) && return ContentItem[]
+    
+    # Process messages in parallel with rate limiting
+    items = asyncmap(messages_data.messages; ntasks=GMAIL_MAX_PARALLEL) do msg
+        # Rate limiting sleep
+        sleep(1/GMAIL_RATE_LIMIT)
+        
         msg_response = HTTP.get(
             "$GMAIL_API_BASE/users/me/messages/$(msg.id)?format=full",
             headers
@@ -146,7 +154,7 @@ function OpenCacheLayer.get_new_content(adapter::GmailAdapter, from::DateTime=no
         raw_content = msg_response.body
         processed = process_raw(adapter, raw_content)
         
-        push!(items, ContentItem(
+        ContentItem(
             processed.message_id,
             raw_content,
             processed,
@@ -154,13 +162,15 @@ function OpenCacheLayer.get_new_content(adapter::GmailAdapter, from::DateTime=no
                 "gmail",
                 processed.from,
                 processed.to,
-                processed.thread_id,  # Gmail uses thread_id as chat_id
-                processed.date  # Use the message's actual date
+                processed.thread_id,
+                processed.date
             ),
-            processed.date  # Use the message's actual date
-        ))
+            processed.date
+        )
     end
     
+    # Sort by timestamp before returning
+    sort!(items, by = x -> x.timestamp)
     items
 end
 
@@ -175,3 +185,6 @@ function OpenCacheLayer.get_adapter_hash(adapter::GmailAdapter)
     # Use client_id as unique identifier for the credentials
     adapter.token_manager.config.client_id
 end
+
+# Add support for time range queries
+OpenCacheLayer.supports_time_range(::GmailAdapter) = true
