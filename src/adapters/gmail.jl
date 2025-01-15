@@ -3,21 +3,24 @@ using JSON3
 using Dates
 using Base64
 using URIs
-using OpenCacheLayer  # Add this to use the base types
+using OpenCacheLayer
+# Add this to use the base types
 # Add this import specifically for the get_new_content function
-import OpenCacheLayer: get_new_content
 
+# Rate limiting constants
+const GMAIL_MAX_PARALLEL = 3  # Maximum parallel requests
+const GMAIL_RATE_LIMIT = 5    # Requests per second
 
-# OAuth2 configuration for Gmail
+# OAuth2 configuration for Gmail - update scope to include both Gmail and user info
 const GMAIL_OAUTH_CONFIG = Dict(
     "auth_uri" => "https://accounts.google.com/o/oauth2/v2/auth",
     "token_uri" => "https://oauth2.googleapis.com/token",
-    "scope" => "https://www.googleapis.com/auth/gmail.readonly",
+    "scope" => "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.email https://mail.google.com/",
     "redirect_uri" => "http://localhost:8080"
 )
 
 # Gmail specific message type
-struct GmailMessage
+struct GmailMessage <: OpenCacheLayer.AbstractMessage
     subject::String
     body::String
     from::String
@@ -26,21 +29,15 @@ struct GmailMessage
     thread_id::String
     labels::Vector{String}
     date::DateTime
+    raw_content::Vector{UInt8}    # Add raw content storage
 end
 
 struct GmailAdapter <: OpenCacheLayer.ChatsLikeAdapter
-    config::AdapterConfig
     token_manager::OAuth2TokenManager
+    email::String  # Required email for token identification
 end
 
-# Updated constructor without last_history_id
-function GmailAdapter(credentials::Dict{String, String}, token_storage::TokenStorage=FileStorage("OpenContentBroker"))
-    config = AdapterConfig(
-        Minute(1),
-        Dict("max_retries" => 3, "retry_delay" => 1),
-        Dict("labels" => ["INBOX"], "max_results" => 100)
-    )
-    
+function GmailAdapter(credentials::Dict{String, String}, email::String, token_storage::TokenStorage=FileStorage("OpenContentBroker"))
     oauth = OAuth2Config(
         GMAIL_OAUTH_CONFIG["auth_uri"],
         GMAIL_OAUTH_CONFIG["token_uri"],
@@ -50,21 +47,84 @@ function GmailAdapter(credentials::Dict{String, String}, token_storage::TokenSto
         credentials["client_secret"]
     )
     
-    token_manager = OAuth2TokenManager(oauth, token_storage)
-    GmailAdapter(config, token_manager)
+    GmailAdapter(OAuth2TokenManager(oauth, token_storage), email)
 end
 
 # Remove token-related methods from GmailAdapter
-function ensure_token!(adapter::GmailAdapter)
-    ensure_access_token!(adapter.token_manager)
-end
-
-# Add this new method
+"""
+Start Gmail-specific OAuth2 authorization flow with email verification
+"""
 function authorize!(adapter::GmailAdapter)
-    authorize!(adapter.token_manager)
+    authorize!(adapter.token_manager; 
+        service_name="Gmail", 
+        filename="$(adapter.email).env",
+        validation_fn=(token) -> verify_user_email(token, adapter.email)
+    )
+end
+"""
+Force a new authorization flow by clearing stored tokens first
+"""
+function force_authorize!(adapter::GmailAdapter)
+    # Remove the stored token file
+    token_path = get_token_path(adapter.token_manager.storage; filename="$(adapter.email).env")
+    isfile(token_path) && rm(token_path)
+    
+    # Reset the current token
+    adapter.token_manager.token[] = nothing
+    
+    # Start fresh authorization
+    authorize!(adapter)
 end
 
-# Process raw Gmail message data
+# Simplify ensure_token! to use the new authorize!
+function ensure_token!(adapter::GmailAdapter)
+    refresh_token = get_token(adapter.token_manager.storage; filename="$(adapter.email).env")
+    
+    if isnothing(refresh_token)
+        @info "No refresh token found for $(adapter.email). Starting authorization flow..."
+        authorize!(adapter)
+        refresh_token = get_token(adapter.token_manager.storage; filename="$(adapter.email).env")
+    end
+    
+    try
+        adapter.token_manager.token[] = refresh_access_token(adapter.token_manager.config, refresh_token)
+        verify_user_email(adapter.token_manager.token[].access_token, adapter.email)
+    catch e
+        if e isa HTTP.ExceptionRequest.StatusError && e.status in [400, 401]
+            @info "Refresh token expired for $(adapter.email). Starting authorization flow..."
+            authorize!(adapter)
+            refresh_token = get_token(adapter.token_manager.storage; filename="$(adapter.email).env")
+            adapter.token_manager.token[] = refresh_access_token(adapter.token_manager.config, refresh_token)
+        else
+            rethrow(e)
+        end
+    end
+    
+    adapter.token_manager.token[].access_token
+end
+
+# Function to verify user email matches requested one
+function verify_user_email(access_token::String, expected_email::String)
+    try
+        response = HTTP.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            ["Authorization" => "Bearer $access_token"]
+        )
+        data = JSON3.read(response.body)
+        data.email == expected_email || error("Authenticated email ($(data.email)) doesn't match requested email ($(expected_email))")
+        true
+    catch e
+        @error "Failed to verify user email" exception=e
+        rethrow(e)
+    end
+end
+
+
+"""
+    process_raw(adapter::ContentAdapter, raw::Vector{UInt8}) -> ContentType
+
+Process raw Gmail message data into structured format.
+"""
 function process_raw(adapter::GmailAdapter, raw::Vector{UInt8})
     msg_data = JSON3.read(raw)
     
@@ -97,21 +157,20 @@ function process_raw(adapter::GmailAdapter, raw::Vector{UInt8})
         msg_data.id,
         msg_data.threadId,
         msg_data.labelIds,
-        timestamp
+        timestamp,
+        raw                        # Store the raw content
     )
-end
-
-# Validate content
-function validate_content(adapter::GmailAdapter, content::ContentItem)
-    # Check if message still exists and labels haven't changed
-    # For mock, always return true
-    true
 end
 
 const GMAIL_API_BASE = "https://www.googleapis.com/gmail/v1"
 
 # Get new messages since last check
-function OpenCacheLayer.get_new_content(adapter::GmailAdapter; from::DateTime=now() - Day(1), to::Union{DateTime,Nothing}=nothing)
+function OpenCacheLayer.get_content(adapter::GmailAdapter; 
+    from::DateTime=now() - Day(1), 
+    to::Union{DateTime,Nothing}=nothing, 
+    max_results::Int=100,
+    labels::Vector{String}=["INBOX"]
+)
     access_token = ensure_token!(adapter)
     
     headers = [
@@ -119,13 +178,12 @@ function OpenCacheLayer.get_new_content(adapter::GmailAdapter; from::DateTime=no
         "Accept" => "application/json"
     ]
     
-    # Convert DateTime to Unix timestamp (seconds since epoch)
     after_ts = floor(Int, datetime2unix(from))
     before_ts = isnothing(to) ? nothing : floor(Int, datetime2unix(to))
     
     query = Dict(
-        "maxResults" => get(adapter.config.filters, "max_results", 100),
-        "labelIds" => join(get(adapter.config.filters, "labels", ["INBOX"]), ","),
+        "maxResults" => max_results,
+        "labelIds" => join(labels, ","),
         "q" => isnothing(before_ts) ? 
             "after:$(after_ts)" : 
             "after:$(after_ts) before:$(before_ts)"
@@ -139,10 +197,10 @@ function OpenCacheLayer.get_new_content(adapter::GmailAdapter; from::DateTime=no
     messages_data = JSON3.read(response.body)
     
     # Early return for empty results
-    (!haskey(messages_data, :messages) || isnothing(messages_data.messages)) && return ContentItem[]
+    (!haskey(messages_data, :messages) || isnothing(messages_data.messages)) && return Vector{GmailMessage}()
     
     # Process messages in parallel with rate limiting
-    items = asyncmap(messages_data.messages; ntasks=GMAIL_MAX_PARALLEL) do msg
+    messages = asyncmap(messages_data.messages; ntasks=GMAIL_MAX_PARALLEL) do msg
         # Rate limiting sleep
         sleep(1/GMAIL_RATE_LIMIT)
         
@@ -151,40 +209,37 @@ function OpenCacheLayer.get_new_content(adapter::GmailAdapter; from::DateTime=no
             headers
         )
         
-        raw_content = msg_response.body
-        processed = process_raw(adapter, raw_content)
-        
-        ContentItem(
-            processed.message_id,
-            raw_content,
-            processed,
-            MessageMetadata(
-                "gmail",
-                processed.from,
-                processed.to,
-                processed.thread_id,
-                processed.date
-            ),
-            processed.date
-        )
+        process_raw(adapter, msg_response.body)
     end
     
     # Sort by timestamp before returning
-    sort!(items, by = x -> x.timestamp)
-    items
+    sort!(messages, by = x -> x.date)
+    messages
 end
 
-# Implement base get_content for specific queries
-function get_content(adapter::GmailAdapter, query::Dict)
+# Update the base get_content for specific queries
+function OpenCacheLayer.get_content(adapter::GmailAdapter, query::Dict)
     from = get(query, "from", now() - Day(1))
-    get_new_content(adapter, from)
+    max_results = get(query, "max_results", 100)
+    labels = get(query, "labels", ["INBOX"])
+    get_content(adapter; from=from, max_results=max_results, labels=labels)
 end
 
 # Add after the adapter struct definition
 function OpenCacheLayer.get_adapter_hash(adapter::GmailAdapter)
     # Use client_id as unique identifier for the credentials
-    adapter.token_manager.config.client_id
+    "$(adapter.token_manager.config.client_id)_$(adapter.email)"
 end
 
 # Add support for time range queries
 OpenCacheLayer.supports_time_range(::GmailAdapter) = true
+
+# Add implementation for get_timestamp
+function OpenCacheLayer.get_timestamp(message::GmailMessage)
+    message.date
+end
+
+# Add after get_timestamp implementation
+function OpenCacheLayer.get_unique_id(message::GmailMessage)
+    message.message_id
+end

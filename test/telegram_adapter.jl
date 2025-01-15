@@ -1,10 +1,14 @@
 # Example TelegramAdapter implementation for testing
-struct TelegramMessage
+struct TelegramMessage <: AbstractMessage
     text::String
     chat_id::Int64
+    raw_content::Vector{UInt8}    # Added raw content
+    sender::String                # Added basic metadata
+    recipients::Vector{String}    # Added basic metadata
+    timestamp::DateTime           # Added timestamp
 end
 
-struct TelegramAdapter <: MessageBasedAdapter{TelegramMessage, MessageMetadata}
+struct TelegramAdapter <: ChatsLikeAdapter
     config::AdapterConfig
     last_update_id::Union{Int, Nothing}
 end
@@ -12,34 +16,38 @@ end
 # Implement required interface methods
 function get_content(adapter::TelegramAdapter, query::Dict)
     # Mock implementation
-    items = ContentItem[]
-    push!(items, ContentItem(
-        "msg1",
-        Vector{UInt8}("test message"),
-        TelegramMessage("test", 123),
-        MessageMetadata(
-            "telegram1",
-            "user1",
-            ["recipient1"],
-            nothing,
-            now()
-        ),
-        now()
-    ))
-    return items
+    raw = Vector{UInt8}("test message")
+    return [
+        TelegramMessage(
+            "test",              # text
+            123,                 # chat_id
+            raw,                 # raw_content
+            "user1",             # sender
+            ["recipient1"],      # recipients
+            now()               # timestamp
+        )
+    ]
 end
 
 function process_raw(adapter::TelegramAdapter, raw::Vector{UInt8})
     # Mock implementation
-    return TelegramMessage(String(raw), 123)
+    return TelegramMessage(
+        String(raw),        # text
+        123,                # chat_id
+        raw,                # raw_content
+        "user1",            # sender
+        ["recipient1"],     # recipients
+        now()              # timestamp
+    )
 end
 
-function validate_content(adapter::TelegramAdapter, content::ContentItem)
-    # Mock implementation
-    return true
-end
 
 function get_new_content(adapter::TelegramAdapter)
     # Mock implementation
     return get_content(adapter, Dict())
+end
+
+# Add implementation for get_timestamp
+function OpenCacheLayer.get_timestamp(message::TelegramMessage)
+    message.timestamp
 end

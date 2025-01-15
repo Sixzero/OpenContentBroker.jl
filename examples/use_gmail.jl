@@ -15,23 +15,32 @@ credentials = Dict(
 # Validate client credentials exist
 all(!=(""), values(credentials)) || error("Missing Gmail client credentials in environment variables")
 
-# Create adapter instance and it will handle authorization if needed
-adapter = GmailAdapter(credentials)
+# Create adapter instance with specific email
+adapter = GmailAdapter(
+    credentials,
+    "tamashavlik@diabtrend.com",
+)
 
 # Wrap adapter with cache layer
-cached_adapter = CacheLayer(adapter)
+cached_adapter = VectorCacheLayer(adapter)
 
-# Get messages from last 2 days - this will cache the results
-messages = get_new_content(cached_adapter, now() - Hour(5))
+# Get messages from last 2 days with custom labels and max_results
+messages = get_content(cached_adapter; 
+    from=now() - Hour(20), 
+    max_results=20, 
+    labels=["INBOX", ]
+)
 
 # Next time you run this with the same date, it will use cache and only fetch new messages
 
 # Process each message
-for msg in messages
-    email = msg.processed_content
+for email in messages
     println("Subject: $(email.subject)")
-    println("From: $(email.from)")
-    println("From: $(email.date)")
-    println("Body: $(email.body[1:min(100,length(email.body))])...")
+    println("From: $(email.date) $(email.from)")
+    # println("Body: $(email.body[1:min(100,length(email.body))])...")
     println("-" ^ 50)
 end
+#%%
+# in case we would need reauthrization, because permission issues.
+using OpenContentBroker: force_authorize!
+force_authorize!(adapter)

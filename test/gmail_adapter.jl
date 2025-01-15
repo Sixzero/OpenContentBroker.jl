@@ -13,11 +13,9 @@ using Base64
         # Test getting new content
         messages = get_new_content(adapter)
         @test length(messages) == 1
-        @test messages[1] isa ContentItem
+        @test messages[1] isa AbstractMessage
         @test messages[1].processed_content isa GmailMessage
         
-        # Test content validation
-        @test validate_content(adapter, messages[1])
         
         # Test message structure
         msg = messages[1].processed_content

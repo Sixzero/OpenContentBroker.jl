@@ -136,23 +136,18 @@ function ensure_refresh_token!(manager::OAuth2TokenManager)
     refresh_token
 end
 
-"""
-Get a valid access token, handling refresh if needed
-"""
-function ensure_access_token!(manager::OAuth2TokenManager)
-    if isnothing(manager.token[])
-        refresh_token = ensure_refresh_token!(manager)
-        manager.token[] = refresh_access_token(manager.config, refresh_token)
-    end
-    manager.token[].access_token
-end
 
 """
 Start OAuth2 authorization flow
 """
-function authorize!(manager::OAuth2TokenManager)
-    start_oauth_flow!(manager.config) do token
-        store_token!(manager.storage, "REFRESH_TOKEN", token.refresh_token)
+function authorize!(manager::OAuth2TokenManager; 
+    service_name::String="Service", 
+    filename::String="tokens.env",
+    validation_fn::Function=(_)->true
+)
+    start_oauth_flow!(manager.config; service_name) do token
+        validation_fn(token.access_token)  # Run validation first
+        store_token!(manager.storage, token.refresh_token; filename)
         manager.token[] = token
     end
 end
@@ -191,6 +186,9 @@ function start_oauth_flow!(token_handler::Function, config::OAuth2Config; servic
     println("\nOpen this URL in your browser:\n", auth_url)
     println("\nWaiting for authorization...")
     
+    # Create a Channel to signal when we're done
+    done = Channel{Bool}(1)
+    
     server = HTTP.serve!("127.0.0.1", 8080) do request
         try
             request.target == "/favicon.ico" && return HTTP.Response(404)
@@ -201,6 +199,9 @@ function start_oauth_flow!(token_handler::Function, config::OAuth2Config; servic
             tokens = exchange_code_for_tokens(config, params["code"])
             token_handler(tokens)
             
+            # Signal we're done
+            put!(done, true)
+            
             return HTTP.Response(200, replace(OAUTH_SUCCESS_TEMPLATE, "{service}" => service_name))
         catch e
             @error "Error handling OAuth callback" exception=e
@@ -208,8 +209,15 @@ function start_oauth_flow!(token_handler::Function, config::OAuth2Config; servic
         end
     end
     
-    println("\nPress Enter to exit...")
-    readline()
-    close(server)
+    try
+        # Wait for either authorization completion or user interrupt
+        take!(done)
+    catch e
+        @error "OAuth flow interrupted" exception=e
+    finally
+        # Ensure server is closed
+        close(server)
+    end
+    
     nothing
 end
