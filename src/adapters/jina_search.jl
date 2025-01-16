@@ -4,9 +4,9 @@ using Dates
 using URIs
 using OpenCacheLayer
 
-struct JinaAdapter <: OpenCacheLayer.ChatsLikeAdapter
-    api_key::String
-    retain_images::Bool
+@kwdef struct JinaAdapter <: OpenCacheLayer.ChatsLikeAdapter
+    api_key::String = get(ENV, "JINA_API_KEY", "")
+    retain_images::Bool = false
 end
 
 JinaAdapter(api_key::String) = JinaAdapter(api_key, false)
@@ -27,14 +27,14 @@ function OpenCacheLayer.get_content(adapter::JinaAdapter, query::String)
     )
     
     data = JSON3.read(response.body)
+    timestamp = now()  # Single timestamp for all results
     
     [SearchResult(
         result.title,
         result.url,
-        # result.description,
         result.content,
         get(result, :score, 1.0),
-        now()
+        timestamp
     ) for result in data.data]
 end
 

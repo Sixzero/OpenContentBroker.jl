@@ -3,9 +3,9 @@ using JSON3
 using Dates
 using OpenCacheLayer
 
-struct TavilyAdapter <: OpenCacheLayer.ChatsLikeAdapter
-    api_key::String
-    max_results::Int
+@kwdef struct TavilyAdapter <: OpenCacheLayer.ChatsLikeAdapter
+    api_key::String = get(ENV, "TAVILY_API_KEY", "")
+    max_results::Int = 5
 end
 
 function OpenCacheLayer.get_content(adapter::TavilyAdapter, query::String)
@@ -20,13 +20,14 @@ function OpenCacheLayer.get_content(adapter::TavilyAdapter, query::String)
     )
     
     data = JSON3.read(response.body)
+    timestamp = now()  # Single timestamp for all results
     
     [SearchResult(
         result.title,
         result.url,
         result.content,
         result.score,
-        now()
+        timestamp
     ) for result in data.results]
 end
 

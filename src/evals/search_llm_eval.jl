@@ -22,14 +22,25 @@ function evaluate_search_results(adapter::LLMSearchEval, query::String, results_
             for r in results], "\n\n"))
     """ for (engine, results) in results_by_engine], "\n\n"))
     
-    Please evaluate the quality and relevance of each search engine's results.
-    Rate them on a scale of 1-10 and explain your reasoning briefly.
-    Focus on: relevance, diversity, information quality, and usefulness for the query.
+    Evaluate each search engine's results on these metrics (score 1-10):
+    1. Relevance: How well do results match the query intent?
+    2. Information Quality: Accuracy, authority, and reliability of sources
+    3. Result Diversity: Variety of perspectives and source types, whether something mentioned that is important but others missed out on it
+    4. Query-specific Usefulness: Practical value for this specific query
     
-    Format your response as:
-    Engine: Score - Brief explanation
+    Format your response with scores and brief explanations:
+    {
+        "Engine1": {
+            "relevance": score,
+            "quality": score,
+            "diversity": score,
+            "usefulness": score,
+            "overall": average_score
+        },
+        ...
+    }
     
-    Finally, rank the engines from best to worst for this specific query.
+    Then provide a brief explanation of your ranking.
     """
     
     resp = aigenerate(prompt; 
@@ -37,5 +48,6 @@ function evaluate_search_results(adapter::LLMSearchEval, query::String, results_
         http_kwargs=(; readtimeout=adapter.readtimeout),
         api_kwargs=(; temperature=adapter.temperature, top_p=adapter.top_p)
     )
+
     return resp.content
 end

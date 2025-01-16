@@ -1,34 +1,49 @@
 using OpenContentBroker
-using OpenContentBroker: LLMSearchEval
+using OpenContentBroker: LLMSearchEval, evaluate_search_results
 using OpenCacheLayer
 using Dates
 
 # Initialize adapters
-tavily = TavilyAdapter(ENV["TAVILY_API_KEY"], 5)
-jina = JinaAdapter(ENV["JINA_API_KEY"])
-serp = SerpAdapter(ENV["SERP_API_KEY"])
-# Initialize LLMSearchEval without API key as it uses aigenerate from OpenCacheLayer
-llm_eval = LLMSearchEval()
+tavily = TavilyAdapter()
+jina = JinaAdapter()
+serp_google = SerpAdapter(engine="google")
+serp_bing = SerpAdapter(engine="bing")
+serp_yandex = SerpAdapter(engine="yandex")
+ddg = DDGAdapter()
+google = GoogleAdapter()
 
 # Wrap with cache
 cached_tavily = DictCacheLayer(tavily)
 cached_jina = DictCacheLayer(jina)
-cached_serp = DictCacheLayer(serp)
+cached_serp_google = DictCacheLayer(serp_google)
+cached_serp_bing = DictCacheLayer(serp_bing)
+cached_serp_yandex = DictCacheLayer(serp_yandex)
+cached_ddg = DictCacheLayer(ddg)
+cached_google = DictCacheLayer(google)  # Add Google cache
+
+# Initialize LLMSearchEval without API key as it uses aigenerate from OpenCacheLayer
+llm_eval = LLMSearchEval()
 
 function search_and_compare(query::String)
     println("\nSearching for: ", query)
     println("=" ^ 50)
     
     # Search with all engines
-    tavily_results = get_content(cached_tavily, query)
-    jina_results = get_content(cached_jina, query)
-    serp_results = get_content(cached_serp, query)
+    @time tavily_results = get_content(cached_tavily, query)
+    @time serp_google_results = get_content(cached_serp_google, query)
+    @time serp_bing_results = get_content(cached_serp_bing, query)
+    @time serp_yandex_results = get_content(cached_serp_yandex, query)
+    @time ddg_results = get_content(cached_ddg, query)
+    @time google_results = get_content(cached_google, query)
     
     # Collect results for evaluation
     results_by_engine = Dict(
         "Tavily" => tavily_results,
-        "Jina" => jina_results,
-        "SERP" => serp_results
+        "SERP_Google" => serp_google_results,
+        "SERP_Bing" => serp_bing_results,
+        "SERP_Yandex" => serp_yandex_results,
+        "DDG" => ddg_results,
+        "Google" => google_results
     )
     
     # Display results
@@ -38,7 +53,7 @@ function search_and_compare(query::String)
         for result in results
             println("Title: ", result.title)
             println("URL: ", result.url)
-            println("Score: ", result.score)
+            # println("Score: ", result.score)
             println("-" ^ 20)
         end
     end
@@ -52,3 +67,9 @@ end
 
 # Test the search
 search_and_compare("Julia programming language features")
+search_and_compare("jld2 julia exclude field serialization")
+search_and_compare("documentation of serp api")
+search_and_compare("documentation of jina search")
+search_and_compare("documentation of tavily")
+search_and_compare("documentation of google search api rest")
+search_and_compare("documentation of duckduckgo search api rest")
