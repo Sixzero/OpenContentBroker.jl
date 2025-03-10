@@ -41,12 +41,6 @@ function process_raw(adapter::TelegramAdapter, raw::Vector{UInt8})
     )
 end
 
-
-function get_new_content(adapter::TelegramAdapter)
-    # Mock implementation
-    return get_content(adapter, Dict())
-end
-
 # Add implementation for get_timestamp
 function OpenCacheLayer.get_timestamp(message::TelegramMessage)
     message.timestamp

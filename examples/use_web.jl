@@ -3,7 +3,7 @@ using OpenCacheLayer
 using Dates
 
 # Create a web adapter instance
-adapter = WebAdapter(Dict(
+adapter = RawWebAdapter(Dict(
     "User-Agent" => "OpenContentBroker.jl/0.1.0",
     "Accept" => "text/html,application/json"
 ), 

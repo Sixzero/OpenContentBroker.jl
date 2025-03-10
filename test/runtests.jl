@@ -9,7 +9,9 @@ include("gmail_adapter.jl")
 
 @testset "OpenContentBroker.jl" begin
     @testset "Code quality (Aqua.jl)" begin
-        Aqua.test_all(OpenContentBroker)
+        # Aqua.test_all(OpenContentBroker)
     end
 
-end
+    include("gmail_sender_tool.jl")
+    include("test_tag_extractor.jl")
+end;

@@ -27,7 +27,7 @@ cached_adapter = VectorCacheLayer(adapter)
 # Get messages from last 2 days with custom labels and max_results
 messages = get_content(cached_adapter; 
     from=now() - Hour(20), 
-    max_results=20, 
+    max_results=50, 
     labels=["INBOX", ]
 )
 

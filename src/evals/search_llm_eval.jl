@@ -24,9 +24,9 @@ function evaluate_search_results(adapter::LLMSearchEval, query::String, results_
     
     Evaluate each search engine's results on these metrics (score 1-10):
     1. Relevance: How well do results match the query intent?
-    2. Information Quality: Accuracy, authority, and reliability of sources
-    3. Result Diversity: Variety of perspectives and source types, whether something mentioned that is important but others missed out on it
-    4. Query-specific Usefulness: Practical value for this specific query
+    2. Quality: Accuracy, authority, and reliability of sources
+    3. Diversity: Variety of perspectives and source types, whether something mentioned that is important but others missed out on it
+    4. Freshness: How recent and up-to-date the results are, considering time-sensitivity of the topic
     
     Format your response with scores and brief explanations:
     {
@@ -34,7 +34,7 @@ function evaluate_search_results(adapter::LLMSearchEval, query::String, results_
             "relevance": score,
             "quality": score,
             "diversity": score,
-            "usefulness": score,
+            "freshness": score,
             "overall": average_score
         },
         ...

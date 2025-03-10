@@ -31,7 +31,7 @@ struct WebScrapedContent <: AbstractWebContent
 end
 
 struct WebScraperAdapter <: StatusBasedAdapter
-    web_adapter::WebAdapter
+    web_adapter::AbstractUrl2LLMAdapter
     max_depth::Int
     max_urls::Int
     relevance_strategy::RelevanceStrategy
@@ -47,7 +47,7 @@ function WebScraperAdapter(;
     relevance_strategy=AIRelevanceStrategy(),
     topic="")
     WebScraperAdapter(
-        WebAdapter(headers, cache_policy), 
+        RawWebAdapter(headers, cache_policy), 
         max_depth, 
         max_urls, 
         relevance_strategy,

@@ -1,0 +1,32 @@
+using UUIDs
+using OpenCacheLayer
+using EasyContext
+using EasyContext: ToolTag
+import EasyContext
+
+@kwdef mutable struct WebContentTool <: AbstractTool
+    id::UUID = uuid4()
+    adapter::DictCacheLayer{<:AbstractUrl2LLMAdapter} = DictCacheLayer(FirecrawlAdapter())  # Changed to DictCacheLayer
+    url::String
+    result::String = ""
+end
+
+WebContentTool(cmd::ToolTag) = WebContentTool(url=cmd.args)
+
+EasyContext.instantiate(::Val{:WEB_CONTENT}, cmd::ToolTag) = WebContentTool(cmd)
+EasyContext.toolname(::Type{WebContentTool}) = "WEB_CONTENT"
+EasyContext.get_description(::Type{WebContentTool}) = """
+Extracts readable text content from a webpage:
+WEB_CONTENT url [$STOP_SEQUENCE]
+
+$STOP_SEQUENCE - optional, executes immediately
+"""
+EasyContext.stop_sequence(::Type{WebContentTool}) = STOP_SEQUENCE
+
+function EasyContext.execute(tool::WebContentTool; no_confirm=false)
+    content = OpenCacheLayer.get_content(tool.adapter, tool.url)
+    tool.result = content.content
+end
+
+EasyContext.result2string(tool::WebContentTool)::String = "Content from '$(tool.url)':\n\n$(tool.result)"
+EasyContext.tool_format(::Type{WebContentTool}) = :single_line

@@ -4,8 +4,6 @@ using OpenCacheLayer
 using JSON3
 using SHA
 
-abstract type AbstractWebContent end
-
 @enum CachePolicy begin
     RESPECT      # Respect HTTP cache headers
     ALWAYS_STALE # Always fetch fresh content
@@ -22,16 +20,13 @@ struct WebContent <: AbstractWebContent
     timestamp::DateTime
 end
 
-struct WebAdapter <: StatusBasedAdapter
-    headers::Dict{String,String}
-    cache_policy::CachePolicy
+@kwdef struct RawWebAdapter <: AbstractUrl2LLMAdapter
+    headers::Dict{String,String}=Dict{String,String}()
+    cache_policy::CachePolicy=RESPECT
 end
 
-WebAdapter(; headers=Dict{String,String}(), cache_policy=RESPECT) = 
-    WebAdapter(headers, cache_policy)
-
 # Interface implementations
-function OpenCacheLayer.is_cache_valid(content::WebContent, adapter::WebAdapter)
+function OpenCacheLayer.is_cache_valid(content::WebContent, adapter::RawWebAdapter)
     adapter.cache_policy === ALWAYS_STALE && return STALE
     adapter.cache_policy === ALWAYS_VALID && return VALID
     
@@ -50,7 +45,7 @@ function OpenCacheLayer.is_cache_valid(content::WebContent, adapter::WebAdapter)
     ASYNC
 end
 
-function OpenCacheLayer.get_content(adapter::WebAdapter, url::String)
+function OpenCacheLayer.get_content(adapter::RawWebAdapter, url::String)
     response = HTTP.get(url, adapter.headers)
     headers = Dict(response.headers)
     
@@ -65,7 +60,7 @@ function OpenCacheLayer.get_content(adapter::WebAdapter, url::String)
     )
 end
 
-function OpenCacheLayer.get_adapter_hash(adapter::WebAdapter)
+function OpenCacheLayer.get_adapter_hash(adapter::RawWebAdapter)
     # For WebAdapter, we use headers as part of the hash since they can affect responses
     # If no special headers, just return basic identifier
     isempty(adapter.headers) ? "WEB_ADAPTER" : bytes2hex(sha256(JSON3.write(adapter.headers)))

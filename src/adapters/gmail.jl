@@ -29,7 +29,9 @@ struct GmailMessage <: OpenCacheLayer.AbstractMessage
     thread_id::String
     labels::Vector{String}
     date::DateTime
-    raw_content::Vector{UInt8}    # Add raw content storage
+    raw_content::Vector{UInt8}
+    references::Vector{String}  # Chain of message references
+    in_reply_to::Union{String,Nothing}  # Direct parent message
 end
 
 struct GmailAdapter <: OpenCacheLayer.ChatsLikeAdapter
@@ -37,7 +39,18 @@ struct GmailAdapter <: OpenCacheLayer.ChatsLikeAdapter
     email::String  # Required email for token identification
 end
 
-function GmailAdapter(credentials::Dict{String, String}, email::String, token_storage::TokenStorage=FileStorage("OpenContentBroker"))
+function GmailAdapter(;
+    credentials::Dict{String,String}=Dict(
+        "client_id" => get(ENV, "GMAIL_CLIENT_ID", ""),
+        "client_secret" => get(ENV, "GMAIL_CLIENT_SECRET", "")
+    ),
+    email::String=get(ENV, "DEFAULT_GMAIL", ""),
+    token_storage::TokenStorage=FileStorage("OpenContentBroker")
+)
+    isempty(credentials["client_id"]) && error("Missing GMAIL_CLIENT_ID in environment")
+    isempty(credentials["client_secret"]) && error("Missing GMAIL_CLIENT_SECRET in environment")
+    isempty(email) && error("Missing DEFAULT_GMAIL in environment or email parameter")
+    
     oauth = OAuth2Config(
         GMAIL_OAUTH_CONFIG["auth_uri"],
         GMAIL_OAUTH_CONFIG["token_uri"],
@@ -49,6 +62,10 @@ function GmailAdapter(credentials::Dict{String, String}, email::String, token_st
     
     GmailAdapter(OAuth2TokenManager(oauth, token_storage), email)
 end
+
+# Add a convenience method that forwards to the keyword args version
+GmailAdapter(credentials::Dict{String,String}, email::String, token_storage::TokenStorage=FileStorage("OpenContentBroker")) = 
+    GmailAdapter(; credentials, email, token_storage)
 
 # Remove token-related methods from GmailAdapter
 """
@@ -131,11 +148,25 @@ function process_raw(adapter::GmailAdapter, raw::Vector{UInt8})
     # Extract headers
     headers = Dict(h.name => h.value for h in msg_data.payload.headers)
     
-    # Process body (assuming text/plain for simplicity)
-    body = ""
-    if haskey(msg_data.payload, :body) && haskey(msg_data.payload.body, :data)
-        body = String(base64decode(replace(msg_data.payload.body.data, '-'=>'+', '_'=>'/')))
+    # Process body with MIME part handling
+    function extract_body(part)
+        if haskey(part, :body) && haskey(part.body, :data)
+            return String(base64decode(replace(part.body.data, '-'=>'+', '_'=>'/')))
+        elseif haskey(part, :parts)
+            # Look for text/plain part first
+            for subpart in part.parts
+                mimeType = get(subpart, :mimeType, "")
+                if mimeType == "text/plain"
+                    return extract_body(subpart)
+                end
+            end
+            # Fallback to first part if no text/plain
+            return extract_body(first(part.parts))
+        end
+        return ""
     end
+    
+    body = extract_body(msg_data.payload)
     
     # Extract message date from internalDate field (milliseconds since epoch)
     timestamp = try
@@ -148,6 +179,18 @@ function process_raw(adapter::GmailAdapter, raw::Vector{UInt8})
             now()  # Final fallback
         end
     end
+
+    # Parse References and In-Reply-To headers
+    references = String[]
+    if haskey(headers, "References")
+        # References header contains space-separated message IDs
+        append!(references, split(headers["References"]))
+    end
+    if haskey(headers, "In-Reply-To")
+        # Add In-Reply-To to references if not already there
+        in_reply = headers["In-Reply-To"]
+        in_reply ∉ references && push!(references, in_reply)
+    end
     
     GmailMessage(
         get(headers, "Subject", ""),
@@ -158,7 +201,9 @@ function process_raw(adapter::GmailAdapter, raw::Vector{UInt8})
         msg_data.threadId,
         msg_data.labelIds,
         timestamp,
-        raw                        # Store the raw content
+        raw,
+        references,
+        get(headers, "In-Reply-To", nothing)
     )
 end
 
@@ -242,4 +287,52 @@ end
 # Add after get_timestamp implementation
 function OpenCacheLayer.get_unique_id(message::GmailMessage)
     message.message_id
+end
+
+"""
+Get a specific Gmail message by its ID
+"""
+function get_message(adapter::GmailAdapter, message_id::String)
+    # Clean message ID - remove <> and @domain.com part
+    clean_id = replace(message_id, r"[<>]" => "")
+    clean_id = split(clean_id, "@")[1]
+    
+    access_token = ensure_token!(adapter)
+    
+    headers = [
+        "Authorization" => "Bearer $access_token",
+        "Accept" => "application/json"
+    ]
+    
+    response = HTTP.get(
+        "$GMAIL_API_BASE/users/me/messages/$(clean_id)?format=full",
+        headers
+    )
+    
+    process_raw(adapter, response.body)
+end
+
+"""
+Get all messages in a thread by thread ID
+"""
+function get_thread_messages(adapter::GmailAdapter, thread_id::String)
+    access_token = ensure_token!(adapter)
+    
+    headers = [
+        "Authorization" => "Bearer $access_token",
+        "Accept" => "application/json"
+    ]
+    
+    response = HTTP.get(
+        "$GMAIL_API_BASE/users/me/threads/$(thread_id)?format=full",
+        headers
+    )
+    
+    thread_data = JSON3.read(response.body)
+    
+    # Process each message in the thread
+    messages = [process_raw(adapter, JSON3.write(msg)) for msg in thread_data.messages]
+    
+    # Sort by timestamp
+    sort!(messages, by = x -> x.date)
 end
