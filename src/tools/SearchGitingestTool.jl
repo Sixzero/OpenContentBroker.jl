@@ -3,7 +3,7 @@ using EasyContext: ToolTag, search, parse_code_block
 import EasyContext
 using EasyContext: NewlineChunker, SourcePath
 
-@kwdef struct GitChunk <: RAG.AbstractChunk
+@kwdef struct GitChunk <: EasyContext.AbstractChunk
     source::SourcePath
     content::String = ""
 end
