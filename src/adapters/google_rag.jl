@@ -1,6 +1,6 @@
 using OpenCacheLayer
 using EasyContext: search, AbstractRAGPipeline
-using PromptingTools.Experimental.RAGTools: AbstractChunker
+using RAGTools: AbstractChunker
 
 @kwdef struct GoogleRAGResult
     url::SourcePath
