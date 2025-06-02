@@ -1,11 +1,9 @@
 using UUIDs
 using EasyContext: ToolTag, search, parse_code_block
 import EasyContext
-using ..OpenContentBroker: GitFile, GitRepo, ingest_repo
-using PromptingTools.Experimental.RAGTools: AbstractChunk
 using EasyContext: NewlineChunker, SourcePath
 
-@kwdef struct GitChunk <: AbstractChunk
+@kwdef struct GitChunk <: RAG.AbstractChunk
     source::SourcePath
     content::String = ""
 end
@@ -32,6 +30,12 @@ end
     results::Vector{GitSearchResult} = GitSearchResult[]
     result::String = ""
     rag_pipeline::Any = EFFICIENT_PIPELINE()
+end
+EasyContext.create_tool(::Type{SearchGitingestTool}, cmd::ToolTag) = let query = strip(cmd.args)
+    # Parse the code block to extract just the URLs
+    _, content = parse_code_block(cmd.content) # this unwraps content from ```urls content ``` block
+    urls = filter(!isempty, strip.(split(content, '\n')))
+    SearchGitingestTool(query=query, urls=urls)
 end
 
 function search_repos(tool::SearchGitingestTool)
@@ -72,15 +76,7 @@ format_search_results(results::Vector{GitSearchResult}) = join([
     $(r.chunk)
     """ for r in results], "\n\n")
 
-SearchGitingestTool(cmd::ToolTag) = 
-    let query = strip(cmd.args)
-        # Parse the code block to extract just the URLs
-        _, content = parse_code_block(cmd.content) # this unwraps content from ```urls content ``` block
-        urls = filter(!isempty, strip.(split(content, '\n')))
-        SearchGitingestTool(query=query, urls=urls)
-    end
 
-EasyContext.instantiate(::Val{:SEARCH_GITINGEST}, cmd::ToolTag) = SearchGitingestTool(cmd)
 EasyContext.toolname(::Type{SearchGitingestTool}) = "SEARCH_GITINGEST"
 EasyContext.get_description(::Type{SearchGitingestTool}) = """
 SearchGitingestTool for searching in the codebase of github repositories:

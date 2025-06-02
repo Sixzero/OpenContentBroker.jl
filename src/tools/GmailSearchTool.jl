@@ -12,7 +12,7 @@ import EasyContext
     result_indices::Vector{Int} = Int[]  # Add indices tracking
 end
 
-GmailSearchTool(cmd::ToolTag) = GmailSearchTool(query=cmd.args)
+EasyContext.create_tool(::Type{GmailSearchTool}, cmd::ToolTag) = GmailSearchTool(query=cmd.args)
 
 function EasyContext.execute(tool::GmailSearchTool; 
     from::DateTime=now() - Day(7),
@@ -46,7 +46,6 @@ function EasyContext.execute(tool::GmailSearchTool;
 end
 
 # Tool interface implementations
-EasyContext.instantiate(::Val{:GMAIL_SEARCH}, cmd::ToolTag) = GmailSearchTool(cmd)
 EasyContext.toolname(::Type{GmailSearchTool}) = "GMAIL_SEARCH"
 EasyContext.get_description(::Type{GmailSearchTool}) = """
 GmailSearchTool for searching relevant emails for a query:

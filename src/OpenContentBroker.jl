@@ -10,7 +10,7 @@ using OpenCacheLayer: AbstractCacheLayer
 using EasyContext: AbstractRAGPipeline, AbstractTool, search
 using EasyContext: create_voyage_embedder, TwoLayerRAG, ReduceGPTReranker, TopK, BM25Embedder, execute
 
-using PromptingTools.Experimental.RAGTools
+using RAGTools
 const RAG = RAGTools
 
 include("token_storage.jl")

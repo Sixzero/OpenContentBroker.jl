@@ -15,7 +15,7 @@ import EasyContext
     result::String = ""
 end
 
-WebSearchRerankerTool(cmd::ToolTag) = WebSearchRerankerTool(query=cmd.args)
+EasyContext.create_tool(::Type{WebSearchRerankerTool}, cmd::ToolTag) = WebSearchRerankerTool(query=cmd.args)
 
 function EasyContext.execute(tool::WebSearchRerankerTool; no_confirm=false)
     # Get Google results
@@ -51,7 +51,6 @@ function EasyContext.execute(tool::WebSearchRerankerTool; no_confirm=false)
         """ for r in tool.results], "\n\n")
 end
 
-EasyContext.instantiate(::Val{:WEB_SEARCH_RERANK}, cmd::ToolTag) = WebSearchRerankerTool(cmd)
 EasyContext.toolname(::Type{WebSearchRerankerTool}) = "WEB_SEARCH_RERANK"
 EasyContext.get_description(::Type{WebSearchRerankerTool}) = """
 WebSearchRerankerTool for searching and reranking web content:

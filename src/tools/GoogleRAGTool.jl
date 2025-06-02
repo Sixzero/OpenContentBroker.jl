@@ -10,7 +10,8 @@ import EasyContext
     result::String = ""
 end
 
-GoogleRAGTool(cmd::ToolTag) = GoogleRAGTool(query=cmd.args)
+
+EasyContext.create_tool(::Type{GoogleRAGTool}, cmd::ToolTag) = GoogleRAGTool(query=cmd.args)
 
 function EasyContext.execute(tool::GoogleRAGTool; no_confirm=false)
     results = OpenCacheLayer.get_content(tool.adapter, tool.query)
@@ -25,7 +26,6 @@ function EasyContext.execute(tool::GoogleRAGTool; no_confirm=false)
     println(join(["URL: $(string(r.url))" for r in results], "\n"))
 end
 
-EasyContext.instantiate(::Val{:GOOGLE_RAG}, cmd::ToolTag) = GoogleRAGTool(cmd)
 EasyContext.toolname(::Type{GoogleRAGTool}) = "GOOGLE_RAG"
 EasyContext.get_description(::Type{GoogleRAGTool}) = """
 GoogleRAGTool for searching with Google and then reranking results with a RAG pipeline:

@@ -10,6 +10,8 @@ using JSON3
     cmd::String = ""  # Add command storage
 end
 
+EasyContext.create_tool(::Type{GmailSenderTool}, cmd::ToolTag) = GmailSenderTool(cmd=parse_raw_block(cmd.content))
+
 """
 Parse email command format:
 To: recipient@email.com
@@ -64,7 +66,6 @@ function EasyContext.execute(tool::GmailSenderTool; no_confirm::Bool=false)
 end
 
 # Tool interface implementations
-EasyContext.instantiate(::Val{:GMAIL_SEND}, cmd::ToolTag) = GmailSenderTool(cmd=parse_raw_block(cmd.content))
 EasyContext.toolname(::Type{GmailSenderTool}) = "GMAIL_SEND"
 EasyContext.get_description(::Type{GmailSenderTool}) = begin
     """

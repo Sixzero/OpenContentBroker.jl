@@ -80,7 +80,6 @@ format_repo(repo::GitRepo) = """
 # Tool interface
 GitingestTool(cmd::ToolTag) = GitingestTool(path=cmd.args)
 
-EasyContext.instantiate(::Val{:GITINGEST}, cmd::ToolTag) = GitingestTool(cmd)
 EasyContext.toolname(::Type{GitingestTool}) = "GITINGEST"
 EasyContext.get_description(::Type{GitingestTool}) = """
 GitingestTool for extracting code context from repositories:

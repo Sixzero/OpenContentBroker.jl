@@ -10,9 +10,8 @@ import EasyContext
     result::String = ""
 end
 
-GoogleSearchTool(cmd::ToolTag) = GoogleSearchTool(query=cmd.args)
+EasyContext.create_tool(::Type{GoogleSearchTool}, cmd::ToolTag) = GoogleSearchTool(query=cmd.args)
 
-EasyContext.instantiate(::Val{:GOOGLE_SEARCH}, cmd::ToolTag) = GoogleSearchTool(cmd)
 EasyContext.toolname(::Type{GoogleSearchTool}) = "GOOGLE_SEARCH"
 EasyContext.get_description(::Type{GoogleSearchTool}) = """
 GoogleSearchTool for searching with Google:

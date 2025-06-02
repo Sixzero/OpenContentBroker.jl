@@ -11,9 +11,7 @@ import EasyContext
     result::String = ""
 end
 
-WebContentTool(cmd::ToolTag) = WebContentTool(url=cmd.args)
-
-EasyContext.instantiate(::Val{:WEB_CONTENT}, cmd::ToolTag) = WebContentTool(cmd)
+EasyContext.create_tool(::Type{WebContentTool}, cmd::ToolTag) = WebContentTool(url=cmd.args)
 EasyContext.toolname(::Type{WebContentTool}) = "WEB_CONTENT"
 EasyContext.get_description(::Type{WebContentTool}) = """
 Extracts readable text content from a webpage:
