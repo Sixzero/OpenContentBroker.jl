@@ -28,3 +28,5 @@ end
 
 EasyContext.result2string(tool::WebContentTool)::String = "Content from '$(tool.url)':\n\n$(tool.result)"
 EasyContext.tool_format(::Type{WebContentTool}) = :single_line
+
+EasyContext.execute_required_tools(::WebContentTool) = true

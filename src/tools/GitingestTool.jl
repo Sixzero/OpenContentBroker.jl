@@ -97,3 +97,5 @@ end
 EasyContext.result2string(tool::GitingestTool)::String = 
     "Gitingest results for '$(tool.path)':\n\n$(tool.result)"
 EasyContext.tool_format(::Type{GitingestTool}) = :single_line
+
+EasyContext.execute_required_tools(::GitingestTool) = true

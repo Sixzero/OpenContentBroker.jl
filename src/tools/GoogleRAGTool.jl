@@ -38,3 +38,5 @@ EasyContext.stop_sequence(::Type{GoogleRAGTool}) = STOP_SEQUENCE
 EasyContext.result2string(tool::GoogleRAGTool)::String = 
     "Google RAG Search results for '$(tool.query)':\n$(tool.result)"
 EasyContext.tool_format(::Type{GoogleRAGTool}) = :single_line
+
+EasyContext.execute_required_tools(::GoogleRAGTool) = true

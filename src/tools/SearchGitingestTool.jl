@@ -110,3 +110,5 @@ end
 EasyContext.result2string(tool::SearchGitingestTool)::String = 
     "Search results for '$(tool.query)' across $(length(tool.urls)) repositories:\n\n$(tool.result)"
 EasyContext.tool_format(::Type{SearchGitingestTool}) = :multi_line
+
+EasyContext.execute_required_tools(::SearchGitingestTool) = true

@@ -35,3 +35,5 @@ end
 
 EasyContext.result2string(tool::GoogleSearchTool)::String = "Search results for '$(tool.query)':\n\n$(tool.result)"
 EasyContext.tool_format(::Type{GoogleSearchTool}) = :single_line
+
+EasyContext.execute_required_tools(::GoogleSearchTool) = true
