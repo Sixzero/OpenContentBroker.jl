@@ -8,9 +8,10 @@ base_adapter = FirecrawlAdapter(
     formats = ["markdown", "html"]
 )
 cached_adapter = DictCacheLayer(base_adapter)  # Changed to DictCacheLayer
-
+# cached_adapter = base_adapter
 # Example 1: Compare uncached vs cached scraping
 url = "https://docs.firecrawl.dev/introduction"
+url = "httpbin.org/html"
 
 println("Example 1: Testing caching")
 println("First call (uncached):")

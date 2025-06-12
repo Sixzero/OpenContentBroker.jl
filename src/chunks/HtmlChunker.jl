@@ -3,10 +3,11 @@ using EasyContext: NewlineChunker
 
 export HtmlChunker, HtmlChunk
 
-@kwdef struct HtmlChunk <: AbstractChunk
-    source::SourcePath
-    content::AbstractString = ""
+struct HtmlChunk <: AbstractChunk
+    source::String
+    content::AbstractString
 end
+HtmlChunk(;source::SourcePath, content::AbstractString="") = HtmlChunk(string(source), content)
 
 @kwdef struct HtmlChunker <: AbstractChunker
     chunker::NewlineChunker{HtmlChunk} = NewlineChunker{HtmlChunk}()

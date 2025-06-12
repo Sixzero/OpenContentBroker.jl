@@ -1,21 +1,32 @@
 using UUIDs
 using OpenCacheLayer
-using EasyContext: ToolTag
+using EasyContext: ToolTag, FileChunk, SourcePath
 import EasyContext
+
+@kwdef struct GoogleRAGToolResult
+    results::Vector{GoogleRAGResult}
+    query::String
+    elapsed::Float64 = 0.0
+    cost::Float64 = 0.0
+end
 
 @kwdef mutable struct GoogleRAGTool <: AbstractTool
     id::UUID = uuid4()
     adapter::GoogleRAGAdapter = GoogleRAGAdapter()
     query::String
     result::String = ""
+    structured_result::Union{GoogleRAGToolResult, Nothing} = nothing
 end
 
 
-EasyContext.create_tool(::Type{GoogleRAGTool}, cmd::ToolTag) = GoogleRAGTool(query=cmd.args)
+EasyContext.create_tool(::Type{GoogleRAGTool}, cmd::ToolTag) = GoogleRAGTool(; query=cmd.args)
 
 function EasyContext.execute(tool::GoogleRAGTool; no_confirm=false)
-    results = OpenCacheLayer.get_content(tool.adapter, tool.query)
+    response = OpenCacheLayer.get_content(tool.adapter, tool.query)
     
+        results, elapsed, cost = response.results, response.elapsed, response.cost
+        tool.structured_result = GoogleRAGToolResult(results, tool.query, elapsed, cost)
+
     tool.result = join([
         """
         # URL: $(string(r.url))
@@ -24,6 +35,9 @@ function EasyContext.execute(tool::GoogleRAGTool; no_confirm=false)
     
     println("Google RAG Search results:")
     println(join(["URL: $(string(r.url))" for r in results], "\n"))
+    if !isnothing(tool.structured_result) && tool.structured_result.cost > 0
+        println("Cost: \$$(round(tool.structured_result.cost, digits=4))")
+    end
 end
 
 EasyContext.toolname(::Type{GoogleRAGTool}) = "GOOGLE_RAG"

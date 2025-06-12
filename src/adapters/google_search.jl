@@ -7,15 +7,14 @@ using OpenCacheLayer
 @kwdef struct GoogleAdapter <: OpenCacheLayer.ChatsLikeAdapter
     api_key::String = get(ENV, "GOOGLE_API_KEY", "")
     cx::String = get(ENV, "GOOGLE_CX", "")  # Custom Search Engine ID
-    num::Int = 10    # Number of results (1-10)
 end
 
-function OpenCacheLayer.get_content(adapter::GoogleAdapter, query::String)
+function OpenCacheLayer.get_content(adapter::GoogleAdapter, query::String; num::Int=10)
     url = "https://www.googleapis.com/customsearch/v1?" * 
           "key=$(adapter.api_key)&" *
           "cx=$(adapter.cx)&" *
           "q=$(URIs.escapeuri(query))&" *
-          "num=$(adapter.num)"
+          "num=$(num)"
     
     response = HTTP.get(url)
     data = JSON3.read(response.body)
