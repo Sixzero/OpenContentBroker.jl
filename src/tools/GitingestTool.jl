@@ -78,7 +78,7 @@ format_repo(repo::GitRepo) = """
     """
 
 # Tool interface
-GitingestTool(cmd::ToolTag) = GitingestTool(path=cmd.args)
+EasyContext.create_tool(::Type{GitingestTool}, cmd::ToolTag) = GitingestTool(path=cmd.args)
 
 EasyContext.toolname(::Type{GitingestTool}) = "GITINGEST"
 EasyContext.get_description(::Type{GitingestTool}) = """
