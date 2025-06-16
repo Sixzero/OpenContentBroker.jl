@@ -4,7 +4,7 @@ using Dates
 using URIs
 using OpenCacheLayer
 
-@kwdef struct JinaAdapter <: OpenCacheLayer.ChatsLikeAdapter
+@kwdef struct JinaAdapter <: AbstractSearchAdapter
     api_key::String = get(ENV, "JINA_API_KEY", "")
     retain_images::Bool = false
 end

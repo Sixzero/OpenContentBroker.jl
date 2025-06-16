@@ -3,7 +3,7 @@ using JSON3
 using Dates
 using OpenCacheLayer
 
-@kwdef struct TavilyAdapter <: OpenCacheLayer.ChatsLikeAdapter
+@kwdef struct TavilyAdapter <: AbstractSearchAdapter
     api_key::String = get(ENV, "TAVILY_API_KEY", "")
     max_results::Int = 5
 end

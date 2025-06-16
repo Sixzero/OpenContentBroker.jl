@@ -24,7 +24,7 @@ results = OpenCacheLayer.get_content(adapter, query)
 
 # Display results
 println("\nTop relevant content chunks:")
-for (i, result) in enumerate(results)
+for (i, result) in enumerate(results.results)
     println("\n[$i] Source: $(string(result.url))")
     println("Content snippet:")
     println("-" ^ 30)

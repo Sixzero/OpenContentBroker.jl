@@ -4,7 +4,7 @@ using URIs
 using Dates
 using OpenCacheLayer
 
-@kwdef struct GoogleAdapter <: OpenCacheLayer.ChatsLikeAdapter
+@kwdef struct GoogleAdapter <: AbstractSearchAdapter
     api_key::String = get(ENV, "GOOGLE_API_KEY", "")
     cx::String = get(ENV, "GOOGLE_CX", "")  # Custom Search Engine ID
 end
@@ -29,5 +29,5 @@ function OpenCacheLayer.get_content(adapter::GoogleAdapter, query::String; num::
     ) for (i, item) in enumerate(data.items)]
 end
 
-OpenCacheLayer.get_adapter_hash(adapter::GoogleAdapter) = 
+OpenCacheLayer.get_adapter_hash(adapter::GoogleAdapter) =
     "GOOGLE_$(adapter.api_key[1:min(8,length(adapter.api_key))])"

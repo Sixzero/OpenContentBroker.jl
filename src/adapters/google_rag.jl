@@ -10,11 +10,12 @@ end
 
 @kwdef struct GoogleRAGAdapter <: StatusBasedAdapter
     google_adapter::GoogleAdapter = GoogleAdapter()
+    fallback_adapter::Union{AbstractSearchAdapter, Nothing} = TavilyAdapter()
     web_adapter::DictCacheLayer{<:AbstractUrl2LLMAdapter} = DictCacheLayer(FirecrawlAdapter())
     chunker::HtmlChunker = HtmlChunker()
     rag_pipeline::AbstractRAGPipeline = EFFICIENT_PIPELINE()
     max_results::Int = 10
-    firecrawl_cost_per_request::Float64 = 20.0 / 3000.0  # $20 for 3000 requests = ~$0.0067 per request
+    firecrawl_cost_per_request::Float64 = 20.0 / 3000.0
 end
 
 function OpenCacheLayer.get_content(adapter::GoogleRAGAdapter, query::String)
@@ -22,7 +23,21 @@ function OpenCacheLayer.get_content(adapter::GoogleRAGAdapter, query::String)
 
     # Get top Google results
     google_results = OpenCacheLayer.get_content(adapter.google_adapter, query; num=adapter.max_results)
-    println("📑 Found $(length(google_results)) Google results")
+    
+    # Fallback to alternative search if Google returns no results and fallback is available
+    if isempty(google_results) && !isnothing(adapter.fallback_adapter)
+        println("🔄 Google returned no results, falling back to alternative search...")
+        fallback_results = OpenCacheLayer.get_content(adapter.fallback_adapter, query)
+        # Handle both direct results and wrapped results
+        google_results = isa(fallback_results, Vector) ? fallback_results : fallback_results.results
+    end
+    
+    println("📑 Found $(length(google_results)) search results")
+    
+    if isempty(google_results)
+        println("❌ No results found from any search engine")
+        return (results=GoogleRAGResult[], elapsed=time() - start_time, cost=0.0)
+    end
     
     # Track Firecrawl requests for cost calculation
     firecrawl_requests = 0

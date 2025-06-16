@@ -14,3 +14,6 @@ end
 
 # Helper for common timestamp implementation
 OpenCacheLayer.get_timestamp(result::SearchResult) = result.timestamp
+
+# Abstract search adapter type
+abstract type AbstractSearchAdapter <: OpenCacheLayer.ChatsLikeAdapter end

@@ -4,7 +4,7 @@ using URIs
 using Dates
 using OpenCacheLayer
 
-@kwdef struct DDGAdapter <: OpenCacheLayer.ChatsLikeAdapter
+@kwdef struct DDGAdapter <: AbstractSearchAdapter
     region::String = "wt-wt"  # worldwide
 end
 

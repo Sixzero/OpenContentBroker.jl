@@ -3,7 +3,7 @@ using JSON3
 using Dates
 using OpenCacheLayer
 
-@kwdef struct SerpAdapter <: OpenCacheLayer.ChatsLikeAdapter
+@kwdef struct SerpAdapter <: AbstractSearchAdapter
     api_key::String = get(ENV, "SERP_API_KEY", "")
     engine::String = "google"  # Can be: google, bing, baidu, yandex, yahoo
 end
