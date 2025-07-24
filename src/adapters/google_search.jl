@@ -18,6 +18,14 @@ function OpenCacheLayer.get_content(adapter::GoogleAdapter, query::String; num::
     
     response = HTTP.get(url)
     data = JSON3.read(response.body)
+    
+    # Debug message to understand what's in the response
+    if !haskey(data, :items)
+        println("🐛 DEBUG: Google API response missing 'items' field. Available keys: $(keys(data))")
+        println("🐛 DEBUG: Full response: $(data)")
+        return SearchResult[]
+    end
+    
     timestamp = now()
 
     [SearchResult(

@@ -1,3 +1,6 @@
+.vscode/settings.json
+search_engine_scores.png
+
 *.jl.*.cov
 *.jl.cov
 *.jl.mem

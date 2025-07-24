@@ -2,15 +2,17 @@ using OpenContentBroker
 using OpenCacheLayer
 
 # Initialize the adapter with default settings
-adapter = GoogleRAGAdapter(
-    # max_results=10  # Limit to top 3 results for faster testing
-)
+adapter = GoogleRAGAdapter()
+# adapter = TavilyAdapter()
 
 # Test query
 query = "What is the privacy policy of Gwen Alibaba do they use data for training?"
 query = "\"gwen alibaba cloud model privacy policy data usage training\""
 query = "gwen alibaba cloud model privacy policy data usage training"
-query = "MITTZON ikea emelő asztal gombok pirosan villog"
+# query = "MITTZON ikea emelő asztal gombok pirosan villog"
+# query = "MITTZON ikea <b><i>emelőasztal</i></b> gombok pirosan villog"
+# query = "FastMCP server_id tool attribution multiple servers"
+# query = "FastMCP <b><i>server id</i></b> tool attribution multiple servers"
 
 println("Searching and analyzing content for: $query")
 println("This may take a minute as it needs to:")

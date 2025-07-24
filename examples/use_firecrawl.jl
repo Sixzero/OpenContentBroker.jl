@@ -21,19 +21,19 @@ println("Second call (should be cached):")
 println("Content matches: ", content1.content == content2.content, "\n")
 
 # Example 2: Using with WebContentTool (uses cached adapter by default)
-tool = WebContentTool(
-    url = "https://docs.firecrawl.dev/api-reference/introduction"
-)
+# tool = WebContentTool(
+#     url = "https://docs.firecrawl.dev/api-reference/introduction"
+# )
 
-println("Example 2: Using WebContentTool with cached adapter")
-@time execute(tool)
+# println("Example 2: Using WebContentTool with cached adapter")
+# @time execute(tool)
 # println(result2string(tool))
 
 # Example 3: Compare with uncached tool
-uncached_tool = WebContentTool(
-    url = "https://docs.firecrawl.dev/api-reference/introduction"
-)
+# uncached_tool = WebContentTool(
+#     url = "https://docs.firecrawl.dev/api-reference/introduction"
+# )
 
-println("\nExample 3: Using WebContentTool with uncached adapter")
-@time execute(uncached_tool)
-println("Results match: ", tool.result == uncached_tool.result)
+# println("\nExample 3: Using WebContentTool with uncached adapter")
+# @time execute(uncached_tool)
+# println("Results match: ", tool.result == uncached_tool.result)
