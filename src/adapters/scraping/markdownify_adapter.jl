@@ -23,6 +23,7 @@ const markdownify = PyNULL()
 function get_markdownify()
     if markdownify == PyNULL()
         try
+            # TODO probably even better solutiion than markdownify: https://github.com/Goldziher/html-to-markdown
             copy!(markdownify, pyimport("markdownify"))
         catch e
             error("Failed to import markdownify. Install with: python3 -m pip install markdownify")
