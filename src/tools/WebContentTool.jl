@@ -6,7 +6,7 @@ import EasyContext
 
 @kwdef mutable struct WebContentTool <: AbstractTool
     id::UUID = uuid4()
-    adapter::DictCacheLayer{<:AbstractUrl2LLMAdapter} = DictCacheLayer(FirecrawlAdapter())  # Changed to DictCacheLayer
+    adapter::DictCacheLayer{<:AbstractUrl2LLMAdapter} = DictCacheLayer(MarkdownifyAdapter())  # Changed to DictCacheLayer
     url::String
     result::String = ""
 end

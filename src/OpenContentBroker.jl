@@ -31,9 +31,12 @@ include("adapters/google_rag.jl")
 
 include("adapters/gmail.jl")
 include("adapters/gmail_sender.jl")
-include("adapters/web_scraper.jl")
 include("adapters/web.jl")
-include("adapters/firecrawl_scraper.jl")
+include("adapters/scraping/web_scraper.jl")
+include("adapters/scraping/firecrawl_scraper.jl")
+include("adapters/scraping/crawlee_adapter.jl")
+include("adapters/scraping/scrapy_adapter.jl")
+include("adapters/scraping/markdownify_adapter.jl")
 include("evals/search_llm_eval.jl")
 
 include("tools/GitingestTool.jl")
@@ -58,7 +61,7 @@ export GmailSenderAdapter, GmailSenderTool
 export RawWebAdapter
 export WebScraperAdapter
 export TavilyAdapter, JinaAdapter, DDGAdapter, SerpAdapter, SearchResult, GoogleAdapter
-export FirecrawlAdapter
+export FirecrawlAdapter, CrawleeAdapter, ScrapyAdapter, MarkdownifyAdapter
 export AIRelevanceStrategy
 export GoogleSearchTool
 export GoogleRAGTool

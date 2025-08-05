@@ -11,7 +11,7 @@ end
 @kwdef struct GoogleRAGAdapter <: StatusBasedAdapter
     google_adapter::GoogleAdapter = GoogleAdapter()
     fallback_adapter::Union{AbstractSearchAdapter, Nothing} = TavilyAdapter()
-    web_adapter::DictCacheLayer{<:AbstractUrl2LLMAdapter} = DictCacheLayer(FirecrawlAdapter())
+    web_adapter::DictCacheLayer{<:AbstractUrl2LLMAdapter} = DictCacheLayer(MarkdownifyAdapter())
     chunker::HtmlChunker = HtmlChunker()
     rag_pipeline::AbstractRAGPipeline = EFFICIENT_PIPELINE()
     max_results::Int = 10
@@ -47,7 +47,7 @@ function OpenCacheLayer.get_content(adapter::GoogleRAGAdapter, query::String)
         println("🌐 Scraping: $(result.url)")
         content = OpenCacheLayer.get_content(adapter.web_adapter, result.url)
         firecrawl_requests += 1  # Count each request
-        chunks = RAG.get_chunks(adapter.chunker, content.content; source=result.url)
+        chunks = RAG.get_chunks(adapter.chunker, content.content; source=content.url)
         println("✂️  Chunked $(length(chunks)) parts from: $(result.url)")
         chunks
     end...)

@@ -1,7 +1,7 @@
 name = "OpenContentBroker"
 uuid = "f883eea3-3243-44bc-bd50-95bfb373a16f"
+version = "0.2.4"
 authors = ["SixZero <havliktomi@hotmail.com> and contributors"]
-version = "0.2.3"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -16,32 +16,40 @@ PromptingTools = "670122d1-24a8-4d70-bfce-740807c42192"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 RAGTools = "16ddad29-bbe8-45a7-857d-3d9514eb0023"
 SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+Scratch = "6c6a2e73-6563-6170-7368-637461726353"
 URIs = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 Unicode = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
+[sources]
+EasyContext = {path = "/home/six/repo/EasyContext.jl"}
+LLMRateLimiters = {path = "/home/six/repo/jl_pkgs/LLMRateLimiters.jl"}
+OpenCacheLayer = {path = "/home/six/repo/OpenCacheLayer.jl"}
+PromptingTools = {path = "/home/six/repo/PromptingTools.jl"}
+
+[compat]
+Base64 = "≥1"
+BaseDirs = "≥1.2"
+Dates = "≥1.11"
+DotEnv = "≥1.0"
+EasyContext = "≥0.4.1"
+HTTP = "≥1.10"
+JSON3 = "≥1.14"
+PromptingTools = "≥0.76"
+PyCall = "≥1.96"
+RAGTools = "≥0.3"
+SHA = "≥0.7.0"
+Scratch = "1.3.0"
+URIs = "≥1.5"
+UUIDs = "≥1.11"
+Unicode = "≥1.11"
+julia = "≥1.11"
+
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 DotEnv = "4dc1fcf4-5e3b-5448-94ab-0c38ec0385c1"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 URIs = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
-Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
-
-[compat]
-JSON3 = "≥1.14"
-URIs = "≥1.5"
-UUIDs = "≥1.11"
-HTTP = "≥1.10"
-DotEnv = "≥1.0"
-SHA = "≥0.7.0"
-RAGTools = "≥0.3"
-PromptingTools = "≥0.76"
-PyCall = "≥1.96"
-BaseDirs = "≥1.2"
-Base64 = "≥1"
-Unicode = "≥1.11"
-Dates = "≥1.11"
-EasyContext = "≥0.4.1"
-julia = "≥1.11"
 
 [targets]
 test = ["Aqua", "Test"]
