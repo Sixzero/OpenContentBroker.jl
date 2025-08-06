@@ -9,6 +9,7 @@ adapter = GoogleRAGAdapter()
 query = "What is the privacy policy of Gwen Alibaba do they use data for training?"
 query = "\"gwen alibaba cloud model privacy policy data usage training\""
 query = "gwen alibaba cloud model privacy policy data usage training"
+query = "gpt-oss model cerebras pricing context length"
 # query = "MITTZON ikea emelő asztal gombok pirosan villog"
 # query = "MITTZON ikea <b><i>emelőasztal</i></b> gombok pirosan villog"
 # query = "FastMCP server_id tool attribution multiple servers"

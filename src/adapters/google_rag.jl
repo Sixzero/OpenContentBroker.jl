@@ -43,15 +43,15 @@ function OpenCacheLayer.get_content(adapter::GoogleRAGAdapter, query::String)
     firecrawl_requests = 0
     
     # Scrape and chunk each URL using asyncmap
-    all_chunks = vcat(asyncmap(google_results) do result
+    all_chunks_raw = asyncmap(google_results) do result
         println("🌐 Scraping: $(result.url)")
         content = OpenCacheLayer.get_content(adapter.web_adapter, result.url)
         firecrawl_requests += 1  # Count each request
         chunks = RAG.get_chunks(adapter.chunker, content.content; source=content.url)
         println("✂️  Chunked $(length(chunks)) parts from: $(result.url)")
         chunks
-    end...)
-    
+    end
+    all_chunks = vcat(all_chunks_raw...)
     println("🔄 Processing $(length(all_chunks)) total chunks through RAG pipeline")
     chunk_texts = string.(all_chunks)
     search_results = search(adapter.rag_pipeline, chunk_texts, query)
