@@ -13,7 +13,7 @@ using OpenContentBroker: GoogleSearchTool, WebContentTool, GmailSenderTool, Sear
 
         GOOGLE_SEARCH python cli tutorial $STOP_SEQUENCE
         
-        WEB_CONTENT https://example.com/doc $STOP_SEQUENCE
+        READ_URL https://example.com/doc $STOP_SEQUENCE
 
         GMAIL_SEND
         ```
@@ -41,7 +41,7 @@ using OpenContentBroker: GoogleSearchTool, WebContentTool, GmailSenderTool, Sear
         @test isempty(google_tag.content)
 
         web_tag = parser.tool_tags[2]
-        @test web_tag.name == "WEB_CONTENT" 
+        @test web_tag.name == "READ_URL" 
         @test web_tag.args == "https://example.com/doc"
         @test isempty(web_tag.content)
 

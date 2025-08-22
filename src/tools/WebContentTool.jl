@@ -12,10 +12,10 @@ import EasyContext
 end
 
 EasyContext.create_tool(::Type{WebContentTool}, cmd::ToolTag) = WebContentTool(url=cmd.args)
-EasyContext.toolname(::Type{WebContentTool}) = "WEB_CONTENT"
+EasyContext.toolname(::Type{WebContentTool}) = "READ_URL"
 EasyContext.get_description(::Type{WebContentTool}) = """
 Extracts readable text content from a webpage:
-WEB_CONTENT url [$STOP_SEQUENCE]
+READ_URL url [$STOP_SEQUENCE]
 
 $STOP_SEQUENCE - optional, executes immediately
 """
