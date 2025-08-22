@@ -7,7 +7,10 @@ struct HtmlChunk <: AbstractChunk
     source::String
     content::AbstractString
 end
-HtmlChunk(;source::SourcePath, content::AbstractString="") = HtmlChunk(string(source), content)
+function HtmlChunk(; source::String, content::AbstractString, from_line::Union{Int,Nothing}=nothing, to_line::Union{Int,Nothing}=nothing)
+  HtmlChunk(string(SourcePath(; path=source, from_line, to_line)), content)
+end
+Base.string(s::HtmlChunk) = "# $(string(s.source))\n$(s.content)"
 
 @kwdef struct HtmlChunker <: AbstractChunker
     chunker::NewlineChunker{HtmlChunk} = NewlineChunker{HtmlChunk}()
