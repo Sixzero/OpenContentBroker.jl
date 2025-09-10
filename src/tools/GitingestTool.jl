@@ -67,15 +67,18 @@ ingest_repo(url::String) =
     end
 
 format_repo(repo::GitRepo) = """
-    Summary:
-    $(repo.summary)
-    
-    Directory Structure:
-    $(repo.tree)
-    
-    Files ($(length(repo.files))):
-    $(join(["$(i). $(f.path) ($(f.size) bytes)" for (i,f) in enumerate(repo.files)], "\n"))
-    """
+## Summary
+
+$(repo.summary)
+
+## Directory Structure
+
+$(repo.tree)
+
+## Files ($(length(repo.files)))
+
+$(join(["### $(f.path) ($(f.size) bytes)\n```\n$(f.content)\n```" for f in repo.files], "\n\n"))
+"""
 
 # Tool interface
 EasyContext.create_tool(::Type{GitingestTool}, cmd::ToolTag) = GitingestTool(path=cmd.args)
