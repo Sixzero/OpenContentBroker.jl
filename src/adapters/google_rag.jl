@@ -13,7 +13,7 @@ end
     fallback_adapter::Union{AbstractSearchAdapter, Nothing} = TavilyAdapter()
     web_adapter::DictCacheLayer{<:AbstractUrl2LLMAdapter} = DictCacheLayer(MarkdownifyAdapter())
     chunker::HtmlChunker = HtmlChunker()
-    rag_pipeline::AbstractRAGPipeline = EFFICIENT_PIPELINE()
+    rag_pipeline::AbstractRAGPipeline = EFFICIENT_PIPELINE(; model="geml")
     max_results::Int = 10
     firecrawl_cost_per_request::Float64 = 20.0 / 3000.0
 end

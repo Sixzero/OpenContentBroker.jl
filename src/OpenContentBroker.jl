@@ -45,6 +45,7 @@ include("tools/GmailSearchTool.jl")
 include("tools/GmailSenderTool.jl")
 include("tools/GoogleSearchTool.jl")
 include("tools/GoogleRAGTool.jl")
+include("tools/GoogleRAGToolGenerator.jl")
 include("tools/WebscrapeSearchTool.jl")
 include("tools/WebContentTool.jl")
 
