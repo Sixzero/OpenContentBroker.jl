@@ -19,4 +19,3 @@ EasyContext.stop_sequence(::GoogleRAGToolGenerator) = EasyContext.stop_sequence(
 EasyContext.stop_sequence(::Type{GoogleRAGToolGenerator}) = EasyContext.stop_sequence(GoogleRAGTool)
 EasyContext.tool_format(::Type{GoogleRAGToolGenerator}) = EasyContext.tool_format(GoogleRAGTool)
 EasyContext.tool_format(::GoogleRAGToolGenerator) = EasyContext.tool_format(GoogleRAGTool)
-│    
