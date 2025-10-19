@@ -18,6 +18,12 @@ end
     firecrawl_cost_per_request::Float64 = 20.0 / 3000.0
 end
 
+# Helper function to check if URL should be skipped
+function should_skip_url(url::String)
+    lowercase_url = lowercase(url)
+    return endswith(lowercase_url, ".pdf")
+end
+
 function OpenCacheLayer.get_content(adapter::GoogleRAGAdapter, query::String)
     start_time = time()
 
@@ -32,10 +38,18 @@ function OpenCacheLayer.get_content(adapter::GoogleRAGAdapter, query::String)
         google_results = isa(fallback_results, Vector) ? fallback_results : fallback_results.results
     end
     
-    println("📑 Found $(length(google_results)) search results")
+    # Filter out PDF URLs
+    filtered_results = filter(result -> !should_skip_url(result.url), google_results)
+    skipped_count = length(google_results) - length(filtered_results)
     
-    if isempty(google_results)
-        println("❌ No results found from any search engine")
+    if skipped_count > 0
+        println("⚠️  Skipped $skipped_count PDF URLs")
+    end
+    
+    println("📑 Found $(length(filtered_results)) valid search results")
+    
+    if isempty(filtered_results)
+        println("❌ No valid results found after filtering")
         return (results=GoogleRAGResult[], elapsed=time() - start_time, cost=0.0)
     end
     
@@ -43,7 +57,7 @@ function OpenCacheLayer.get_content(adapter::GoogleRAGAdapter, query::String)
     firecrawl_requests = 0
     
     # Scrape and chunk each URL using asyncmap
-    all_chunks_raw = asyncmap(google_results) do result
+    all_chunks_raw = asyncmap(filtered_results) do result
         println("🌐 Scraping: $(result.url)")
         content = OpenCacheLayer.get_content(adapter.web_adapter, result.url)
         firecrawl_requests += 1  # Count each request
