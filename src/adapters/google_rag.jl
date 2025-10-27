@@ -8,10 +8,19 @@ using RAGTools: AbstractChunker
     score::Float64=0.0
 end
 
+# Singleton pattern for global web cache
+const _GLOBAL_WEB_CACHE = Ref{Union{DictCacheLayer{<:AbstractUrl2LLMAdapter},Nothing}}(nothing)
+function get_global_web_cache()
+    if _GLOBAL_WEB_CACHE[] === nothing
+        _GLOBAL_WEB_CACHE[] = DictCacheLayer(MarkdownifyAdapter())
+    end
+    _GLOBAL_WEB_CACHE[]
+end
+
 @kwdef struct GoogleRAGAdapter <: StatusBasedAdapter
     google_adapter::GoogleAdapter = GoogleAdapter()
     fallback_adapter::Union{AbstractSearchAdapter, Nothing} = TavilyAdapter()
-    web_adapter::DictCacheLayer{<:AbstractUrl2LLMAdapter} = DictCacheLayer(MarkdownifyAdapter())
+    # Removed web_adapter field - now using global cache
     chunker::HtmlChunker = HtmlChunker()
     rag_pipeline::AbstractRAGPipeline = EFFICIENT_PIPELINE(; model="gemfl")
     max_results::Int = 10
@@ -56,10 +65,13 @@ function OpenCacheLayer.get_content(adapter::GoogleRAGAdapter, query::String)
     # Track Firecrawl requests for cost calculation
     firecrawl_requests = 0
     
+    # Get global web cache
+    web_cache = get_global_web_cache()
+    
     # Scrape and chunk each URL using asyncmap
     all_chunks_raw = asyncmap(filtered_results) do result
         println("🌐 Scraping: $(result.url)")
-        content = OpenCacheLayer.get_content(adapter.web_adapter, result.url)
+        content = OpenCacheLayer.get_content(web_cache, result.url)
         firecrawl_requests += 1  # Count each request
         chunks = RAG.get_chunks(adapter.chunker, content.content; source=content.url)
         println("✂️  Chunked $(length(chunks)) parts from: $(result.url)")
@@ -87,4 +99,4 @@ function OpenCacheLayer.get_content(adapter::GoogleRAGAdapter, query::String)
 end
 
 OpenCacheLayer.get_adapter_hash(adapter::GoogleRAGAdapter) = 
-    "GOOGLE_RAG_" * get_adapter_hash(adapter.google_adapter) * "_" * get_adapter_hash(adapter.web_adapter)
+    "GOOGLE_RAG_" * get_adapter_hash(adapter.google_adapter)
