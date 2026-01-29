@@ -37,4 +37,4 @@ end
 
 EasyContext.toolname(::GoogleRAGToolGenerator) = "google_rag"
 EasyContext.toolname(::Type{GoogleRAGToolGenerator}) = "google_rag"
-EasyContext.get_description(::Type{GoogleRAGToolGenerator}) = ToolCallFormat.get_description(GoogleRAGTool)
+EasyContext.get_description(::Type{GoogleRAGToolGenerator}) = get_description(GoogleRAGTool)
