@@ -66,7 +66,7 @@ export TavilyAdapter, JinaAdapter, DDGAdapter, SerpAdapter, SearchResult, Google
 export FirecrawlAdapter, CrawleeAdapter, ScrapyAdapter, MarkdownifyAdapter
 export AIRelevanceStrategy
 export GoogleSearchTool
-export GoogleRAGTool
+export GoogleRAGTool, GoogleRAGToolGenerator
 export GitingestTool, SearchGitingestTool
 export WebContentTool
 export GmailSearchTool, GmailSenderTool
