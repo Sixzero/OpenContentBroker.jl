@@ -1,5 +1,5 @@
 using OpenCacheLayer: get_content
-using EasyContext: ToolTag, parse_raw_block
+using ToolCallFormat: ParsedCall
 import EasyContext
 using JSON3
 
@@ -10,7 +10,9 @@ using JSON3
     cmd::String = ""  # Add command storage
 end
 
-EasyContext.create_tool(::Type{GmailSenderTool}, cmd::ToolTag) = GmailSenderTool(cmd=parse_raw_block(cmd.content))
+function EasyContext.create_tool(::Type{GmailSenderTool}, call::ParsedCall)
+    GmailSenderTool(cmd=call.content)
+end
 
 """
 Parse email command format:
@@ -66,29 +68,20 @@ function EasyContext.execute(tool::GmailSenderTool; no_confirm::Bool=false)
 end
 
 # Tool interface implementations
-EasyContext.toolname(::Type{GmailSenderTool}) = "GMAIL_SEND"
-EasyContext.get_description(::Type{GmailSenderTool}) = begin
-    """
-    GmailSenderTool for sending emails:
-    GMAIL_SEND
-    ```
-    To: recipient@email.com
-    Subject: Email Subject
-    Cc: cc@email.com  # Optional
-    Bcc: bcc@email.com  # Optional
-    Reply-To: reply@email.com  # Optional
-    In-Reply-To: <message-id@domain.com>  # Optional
-    References: <thread-id@domain.com>  # Optional
-
-    Email body content here
-    Multiple lines are supported
-    ```
-    [$STOP_SEQUENCE]
-
-    $STOP_SEQUENCE is optional, if provided the tool will be instantly executed.
-    """
-end
-EasyContext.stop_sequence(::Type{GmailSenderTool}) = STOP_SEQUENCE
+EasyContext.toolname(::Type{GmailSenderTool}) = "gmail_send"
+const GMAIL_SEND_SCHEMA = (
+    name = "gmail_send",
+    description = "Send an email via Gmail",
+    params = [
+        (name = "to", type = "string", description = "Recipient email address", required = true),
+        (name = "subject", type = "string", description = "Email subject", required = true),
+        (name = "body", type = "string", description = "Email body content", required = true),
+        (name = "cc", type = "string", description = "CC address", required = false),
+        (name = "bcc", type = "string", description = "BCC address", required = false)
+    ]
+)
+EasyContext.get_tool_schema(::Type{GmailSenderTool}) = GMAIL_SEND_SCHEMA
+EasyContext.get_description(::Type{GmailSenderTool}) = EasyContext.description_from_schema(GMAIL_SEND_SCHEMA)
 # TODO why do we need "don't retry", it should be obvious.
 EasyContext.result2string(tool::GmailSenderTool)::String = 
     isnothing(tool.last_response) ? "No email send got cancelled, don't retry." :

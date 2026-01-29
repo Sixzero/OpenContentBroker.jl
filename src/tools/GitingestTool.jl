@@ -1,6 +1,6 @@
 using UUIDs
 using PyCall
-using EasyContext: ToolTag
+using ToolCallFormat: ParsedCall
 using EasyContext: AbstractTool
 import EasyContext
 
@@ -81,16 +81,19 @@ $(join(["### $(f.path) ($(f.size) bytes)\n```\n$(f.content)\n```" for f in repo.
 """
 
 # Tool interface
-EasyContext.create_tool(::Type{GitingestTool}, cmd::ToolTag) = GitingestTool(path=cmd.args)
+function EasyContext.create_tool(::Type{GitingestTool}, call::ParsedCall)
+    url_pv = get(call.kwargs, "url", nothing)
+    GitingestTool(path=url_pv !== nothing ? url_pv.value : "")
+end
 
-EasyContext.toolname(::Type{GitingestTool}) = "GITINGEST"
-EasyContext.get_description(::Type{GitingestTool}) = """
-GitingestTool for extracting code context from repositories:
-GITINGEST [github repo url] [$STOP_SEQUENCE]
-
-$STOP_SEQUENCE is optional, if provided the tool will be instantly executed.
-"""
-EasyContext.stop_sequence(::Type{GitingestTool}) = STOP_SEQUENCE
+EasyContext.toolname(::Type{GitingestTool}) = "gitingest"
+const GITINGEST_SCHEMA = (
+    name = "gitingest",
+    description = "Extract code context from GitHub repositories",
+    params = [(name = "url", type = "string", description = "GitHub repository URL", required = true)]
+)
+EasyContext.get_tool_schema(::Type{GitingestTool}) = GITINGEST_SCHEMA
+EasyContext.get_description(::Type{GitingestTool}) = EasyContext.description_from_schema(GITINGEST_SCHEMA)
 
 function EasyContext.execute(tool::GitingestTool; no_confirm=false)
     tool.repo = ingest_repo(tool.path)

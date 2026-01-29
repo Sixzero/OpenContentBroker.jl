@@ -1,7 +1,7 @@
 using UUIDs
 using OpenCacheLayer
 using EasyContext
-using EasyContext: ToolTag
+using ToolCallFormat: ParsedCall
 import EasyContext
 
 @kwdef mutable struct WebContentTool <: AbstractTool
@@ -11,15 +11,22 @@ import EasyContext
     result::String = ""
 end
 
-EasyContext.create_tool(::Type{WebContentTool}, cmd::ToolTag) = WebContentTool(url=cmd.args)
-EasyContext.toolname(::Type{WebContentTool}) = "READ_URL"
-EasyContext.get_description(::Type{WebContentTool}) = """
-Extracts readable text content from a webpage:
-READ_URL url [$STOP_SEQUENCE]
+function EasyContext.create_tool(::Type{WebContentTool}, call::ParsedCall)
+    url_pv = get(call.kwargs, "url", nothing)
+    WebContentTool(url=url_pv !== nothing ? url_pv.value : "")
+end
+EasyContext.toolname(::Type{WebContentTool}) = "read_url"
 
-$STOP_SEQUENCE - optional, executes immediately
-"""
-EasyContext.stop_sequence(::Type{WebContentTool}) = STOP_SEQUENCE
+# Schema for description generation
+const WEBCONTENT_SCHEMA = (
+    name = "read_url",
+    description = "Extracts readable text content from a webpage",
+    params = [
+        (name = "url", type = "string", description = "URL of the webpage to read", required = true),
+    ]
+)
+EasyContext.get_tool_schema(::Type{WebContentTool}) = WEBCONTENT_SCHEMA
+EasyContext.get_description(::Type{WebContentTool}) = EasyContext.description_from_schema(WEBCONTENT_SCHEMA)
 
 function EasyContext.execute(tool::WebContentTool; no_confirm=false)
     content = OpenCacheLayer.get_content(tool.adapter, tool.url)

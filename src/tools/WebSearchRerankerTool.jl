@@ -1,6 +1,6 @@
 using UUIDs
 using OpenCacheLayer
-using EasyContext: ToolTag
+using ToolCallFormat: ParsedCall
 import EasyContext
 
 
@@ -15,7 +15,10 @@ import EasyContext
     result::String = ""
 end
 
-EasyContext.create_tool(::Type{WebSearchRerankerTool}, cmd::ToolTag) = WebSearchRerankerTool(query=cmd.args)
+function EasyContext.create_tool(::Type{WebSearchRerankerTool}, call::ParsedCall)
+    query_pv = get(call.kwargs, "query", nothing)
+    WebSearchRerankerTool(query=query_pv !== nothing ? query_pv.value : "")
+end
 
 function EasyContext.execute(tool::WebSearchRerankerTool; no_confirm=false)
     # Get Google results
@@ -51,14 +54,14 @@ function EasyContext.execute(tool::WebSearchRerankerTool; no_confirm=false)
         """ for r in tool.results], "\n\n")
 end
 
-EasyContext.toolname(::Type{WebSearchRerankerTool}) = "WEB_SEARCH_RERANK"
-EasyContext.get_description(::Type{WebSearchRerankerTool}) = """
-WebSearchRerankerTool for searching and reranking web content:
-WEB_SEARCH_RERANK search_query [$STOP_SEQUENCE]
-
-$STOP_SEQUENCE is optional, if provided the tool will be instantly executed.
-"""
-EasyContext.stop_sequence(::Type{WebSearchRerankerTool}) = STOP_SEQUENCE
+EasyContext.toolname(::Type{WebSearchRerankerTool}) = "web_search_rerank"
+const WEB_SEARCH_RERANK_SCHEMA = (
+    name = "web_search_rerank",
+    description = "Search and rerank web content with RAG pipeline",
+    params = [(name = "query", type = "string", description = "Search query", required = true)]
+)
+EasyContext.get_tool_schema(::Type{WebSearchRerankerTool}) = WEB_SEARCH_RERANK_SCHEMA
+EasyContext.get_description(::Type{WebSearchRerankerTool}) = EasyContext.description_from_schema(WEB_SEARCH_RERANK_SCHEMA)
 EasyContext.result2string(tool::WebSearchRerankerTool)::String = 
     "Reranked search results for '$(tool.query)':\n\n$(tool.result)"
 EasyContext.tool_format(::Type{WebSearchRerankerTool}) = :single_line

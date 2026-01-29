@@ -1,6 +1,7 @@
 using UUIDs
 using OpenCacheLayer
-using EasyContext: ToolTag, FileChunk, SourcePath
+using ToolCallFormat: ParsedCall
+using EasyContext: FileChunk, SourcePath
 import EasyContext
 
 @kwdef struct GoogleRAGToolResult
@@ -19,7 +20,10 @@ end
 end
 
 
-EasyContext.create_tool(::Type{GoogleRAGTool}, cmd::ToolTag) = GoogleRAGTool(; query=cmd.args)
+function EasyContext.create_tool(::Type{GoogleRAGTool}, call::ParsedCall)
+    query_pv = get(call.kwargs, "query", nothing)
+    GoogleRAGTool(; query=query_pv !== nothing ? query_pv.value : "")
+end
 
 function EasyContext.execute(tool::GoogleRAGTool; no_confirm=false)
     response = OpenCacheLayer.get_content(tool.adapter, tool.query)
@@ -40,15 +44,14 @@ function EasyContext.execute(tool::GoogleRAGTool; no_confirm=false)
     end
 end
 
-EasyContext.toolname(::Type{GoogleRAGTool}) = "GOOGLE_RAG"
-EasyContext.get_description(::Type{GoogleRAGTool}) = """
-GoogleRAGTool for searching with Google and then reranking results with a RAG pipeline:
-GOOGLE_RAG [your search query] [$STOP_SEQUENCE]
-
-$STOP_SEQUENCE is optional, if provided the tool will be instantly executed.
-Generally this is a better Google search, returning higher quality results.
-"""
-EasyContext.stop_sequence(::Type{GoogleRAGTool}) = STOP_SEQUENCE
+EasyContext.toolname(::Type{GoogleRAGTool}) = "google_rag"
+const GOOGLE_RAG_SCHEMA = (
+    name = "google_rag",
+    description = "Search with Google and rerank results with RAG pipeline for higher quality results",
+    params = [(name = "query", type = "string", description = "Search query", required = true)]
+)
+EasyContext.get_tool_schema(::Type{GoogleRAGTool}) = GOOGLE_RAG_SCHEMA
+EasyContext.get_description(::Type{GoogleRAGTool}) = EasyContext.description_from_schema(GOOGLE_RAG_SCHEMA)
 EasyContext.result2string(tool::GoogleRAGTool)::String = 
     "Google RAG Search results for '$(tool.query)':\n$(tool.result)"
 EasyContext.tool_format(::Type{GoogleRAGTool}) = :single_line

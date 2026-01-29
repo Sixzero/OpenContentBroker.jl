@@ -1,6 +1,6 @@
 using UUIDs
 using OpenCacheLayer
-using EasyContext: ToolTag
+using ToolCallFormat: ParsedCall
 import EasyContext
 
 @kwdef mutable struct GoogleSearchTool <: AbstractTool
@@ -10,16 +10,19 @@ import EasyContext
     result::String = ""
 end
 
-EasyContext.create_tool(::Type{GoogleSearchTool}, cmd::ToolTag) = GoogleSearchTool(query=cmd.args)
+function EasyContext.create_tool(::Type{GoogleSearchTool}, call::ParsedCall)
+    query_pv = get(call.kwargs, "query", nothing)
+    GoogleSearchTool(query=query_pv !== nothing ? query_pv.value : "")
+end
 
-EasyContext.toolname(::Type{GoogleSearchTool}) = "GOOGLE_SEARCH"
-EasyContext.get_description(::Type{GoogleSearchTool}) = """
-GoogleSearchTool for searching with Google:
-GOOGLE_SEARCH [your search query] [$STOP_SEQUENCE]
-
-$STOP_SEQUENCE is optional, if provided the tool will be instantly executed.
-"""
-EasyContext.stop_sequence(::Type{GoogleSearchTool}) = STOP_SEQUENCE
+EasyContext.toolname(::Type{GoogleSearchTool}) = "google_search"
+const GOOGLE_SEARCH_SCHEMA = (
+    name = "google_search",
+    description = "Search with Google",
+    params = [(name = "query", type = "string", description = "Search query", required = true)]
+)
+EasyContext.get_tool_schema(::Type{GoogleSearchTool}) = GOOGLE_SEARCH_SCHEMA
+EasyContext.get_description(::Type{GoogleSearchTool}) = EasyContext.description_from_schema(GOOGLE_SEARCH_SCHEMA)
 
 function EasyContext.execute(tool::GoogleSearchTool; no_confirm=false)
     results = OpenCacheLayer.get_content(tool.adapter, tool.query)

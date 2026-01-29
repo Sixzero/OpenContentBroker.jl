@@ -1,5 +1,6 @@
 using OpenCacheLayer: get_content
-using EasyContext: ToolTag, create_voyage_embedder, TwoLayerRAG, ReduceGPTReranker, TopK, BM25Embedder
+using ToolCallFormat: ParsedCall
+using EasyContext: create_voyage_embedder, TwoLayerRAG, ReduceGPTReranker, TopK, BM25Embedder
 import EasyContext
 
 @kwdef mutable struct GmailSearchTool <: AbstractTool
@@ -12,7 +13,10 @@ import EasyContext
     result_indices::Vector{Int} = Int[]  # Add indices tracking
 end
 
-EasyContext.create_tool(::Type{GmailSearchTool}, cmd::ToolTag) = GmailSearchTool(query=cmd.args)
+function EasyContext.create_tool(::Type{GmailSearchTool}, call::ParsedCall)
+    query_pv = get(call.kwargs, "query", nothing)
+    GmailSearchTool(query=query_pv !== nothing ? query_pv.value : "")
+end
 
 function EasyContext.execute(tool::GmailSearchTool; 
     from::DateTime=now() - Day(7),
@@ -46,14 +50,14 @@ function EasyContext.execute(tool::GmailSearchTool;
 end
 
 # Tool interface implementations
-EasyContext.toolname(::Type{GmailSearchTool}) = "GMAIL_SEARCH"
-EasyContext.get_description(::Type{GmailSearchTool}) = """
-GmailSearchTool for searching relevant emails for a query:
-GMAIL_SEARCH search_query [$STOP_SEQUENCE]
-
-$STOP_SEQUENCE is optional, if provided the tool will be instantly executed.
-"""
-EasyContext.stop_sequence(::Type{GmailSearchTool}) = STOP_SEQUENCE
+EasyContext.toolname(::Type{GmailSearchTool}) = "gmail_search"
+const GMAIL_SEARCH_SCHEMA = (
+    name = "gmail_search",
+    description = "Search relevant emails for a query",
+    params = [(name = "query", type = "string", description = "Search query", required = true)]
+)
+EasyContext.get_tool_schema(::Type{GmailSearchTool}) = GMAIL_SEARCH_SCHEMA
+EasyContext.get_description(::Type{GmailSearchTool}) = EasyContext.description_from_schema(GMAIL_SEARCH_SCHEMA)
 EasyContext.result2string(tool::GmailSearchTool)::String = 
     if isempty(tool.search_results) 
         "No emails found matching the criteria."

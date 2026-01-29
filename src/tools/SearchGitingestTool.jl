@@ -1,5 +1,6 @@
 using UUIDs
-using EasyContext: ToolTag, search, parse_code_block
+using ToolCallFormat: ParsedCall
+using EasyContext: search, parse_code_block
 import EasyContext
 using EasyContext: NewlineChunker, SourcePath
 
@@ -31,9 +32,11 @@ end
     result::String = ""
     rag_pipeline::Any = EFFICIENT_PIPELINE()
 end
-EasyContext.create_tool(::Type{SearchGitingestTool}, cmd::ToolTag) = let query = strip(cmd.args)
+function EasyContext.create_tool(::Type{SearchGitingestTool}, call::ParsedCall)
+    query_pv = get(call.kwargs, "query", nothing)
+    query = query_pv !== nothing ? strip(query_pv.value) : ""
     # Parse the code block to extract just the URLs
-    _, content = parse_code_block(cmd.content) # this unwraps content from ```urls content ``` block
+    _, content = parse_code_block(call.content) # this unwraps content from ```urls content ``` block
     urls = filter(!isempty, strip.(split(content, '\n')))
     SearchGitingestTool(query=query, urls=urls)
 end
@@ -77,25 +80,17 @@ format_search_results(results::Vector{GitSearchResult}) = join([
     """ for r in results], "\n\n")
 
 
-EasyContext.toolname(::Type{SearchGitingestTool}) = "SEARCH_GITINGEST"
-EasyContext.get_description(::Type{SearchGitingestTool}) = """
-SearchGitingestTool for searching in the codebase of github repositories:
-SEARCH_GITINGEST search_query
-```urls
-repo_paths
-```
-
-Example: 
-SEARCH_GITINGEST "Where is the main function?"
-```urls
-https://github.com/user1/repoX
-https://github.com/user2/repoY
-```
-
-You always need to list the urls in which we want to search. 
-$STOP_SEQUENCE is optional, if provided the tool will be instantly executed.
-"""
-EasyContext.stop_sequence(::Type{SearchGitingestTool}) = STOP_SEQUENCE
+EasyContext.toolname(::Type{SearchGitingestTool}) = "search_gitingest"
+const SEARCH_GITINGEST_SCHEMA = (
+    name = "search_gitingest",
+    description = "Search in the codebase of GitHub repositories",
+    params = [
+        (name = "query", type = "string", description = "Search query", required = true),
+        (name = "urls", type = "string", description = "GitHub repository URLs (in code block)", required = true)
+    ]
+)
+EasyContext.get_tool_schema(::Type{SearchGitingestTool}) = SEARCH_GITINGEST_SCHEMA
+EasyContext.get_description(::Type{SearchGitingestTool}) = EasyContext.description_from_schema(SEARCH_GITINGEST_SCHEMA)
 
 function EasyContext.execute(tool::SearchGitingestTool; no_confirm=false)
     tool.repos = [ingest_repo(url) for url in tool.urls]

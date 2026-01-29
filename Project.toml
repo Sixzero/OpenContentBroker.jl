@@ -17,6 +17,7 @@ PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 RAGTools = "16ddad29-bbe8-45a7-857d-3d9514eb0023"
 SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 Scratch = "6c6a2e73-6563-6170-7368-637461726353"
+ToolCallFormat = "ae3acb55-b8cb-46d1-89eb-5b4f98bcbe10"
 URIs = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 Unicode = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
@@ -43,7 +44,8 @@ julia = "≥1.11"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 DotEnv = "4dc1fcf4-5e3b-5448-94ab-0c38ec0385c1"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+ToolCallFormat = "ae3acb55-b8cb-46d1-89eb-5b4f98bcbe10"
 URIs = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
 
 [targets]
-test = ["Aqua", "Test"]
+test = ["Aqua", "Test", "ToolCallFormat"]
