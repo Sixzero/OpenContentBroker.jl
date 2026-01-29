@@ -1,11 +1,12 @@
+using ToolCallFormat: @deftool
+
 # Module-level adapters
 const WEB_RERANK_GOOGLE_ADAPTER = GoogleAdapter()
 const WEB_RERANK_WEB_ADAPTER = DictCacheLayer(FirecrawlAdapter())
 const WEB_RERANK_CHUNKER = HtmlChunker()
 const WEB_RERANK_PIPELINE = EFFICIENT_PIPELINE()
 
-"Search and rerank web content with RAG pipeline"
-@deftool WebSearchRerankerTool web_search_rerank(query::String) = begin
+@deftool "Search and rerank web content with RAG pipeline" function web_search_rerank(query::String => "Search query")
     # Get Google results
     google_results = OpenCacheLayer.get_content(WEB_RERANK_GOOGLE_ADAPTER, query)
 
@@ -32,5 +33,5 @@ const WEB_RERANK_PIPELINE = EFFICIENT_PIPELINE()
         $(get_content(res))
         """ for res in search_results], "\n\n")
 
-    tool.result = "Reranked search results for '$query':\n\n$formatted"
+    "Reranked search results for '$query':\n\n$formatted"
 end

@@ -1,8 +1,12 @@
+using ToolCallFormat: @deftool
+
 # Module-level adapter
 const WEB_CONTENT_ADAPTER = DictCacheLayer(MarkdownifyAdapter())
 
-"Extracts readable text content from a webpage"
-@deftool WebContentTool read_url(url::String) = begin
+@deftool "Extracts readable text content from a webpage" function read_url(url::String => "URL of webpage to read")
     content = OpenCacheLayer.get_content(WEB_CONTENT_ADAPTER, url)
-    tool.result = "Content from '$url':\n\n$(content.content)"
+    "Content from '$url':\n\n$(content.content)"
 end
+
+# Alias for backward compatibility
+const WebContentTool = ReadUrlTool

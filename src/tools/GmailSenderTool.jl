@@ -33,9 +33,10 @@ function parse_email_command(cmd::String)
     result
 end
 
-"Send an email via Gmail"
-@deftool GmailSenderTool gmail_send(content::CodeBlock) = begin
-    email_params = parse_email_command(content.content)
+using ToolCallFormat: @deftool, CodeBlock
+
+@deftool "Send an email via Gmail" function gmail_send(content::CodeBlock => "Email in headers+body format")
+    email_params = parse_email_command(string(content))
 
     response = send_gmail(GMAIL_SENDER_ADAPTER;
         to=email_params["to"],
@@ -48,5 +49,5 @@ end
         references=get(email_params, "references", nothing)
     )
 
-    tool.result = isnothing(response) ? "No email sent, cancelled." : "Email sent successfully. Message ID: $(response.id)"
+    isnothing(response) ? "No email sent, cancelled." : "Email sent successfully. Message ID: $(response.id)"
 end

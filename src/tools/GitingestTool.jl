@@ -70,8 +70,9 @@ $(repo.tree)
 $(join(["### $(f.path) ($(f.size) bytes)\n```\n$(f.content)\n```" for f in repo.files], "\n\n"))
 """
 
-"Extract code context from GitHub repositories"
-@deftool GitingestTool gitingest(url::String) = begin
-    repo = ingest_repo(url)
-    tool.result = "Gitingest results for '$url':\n\n$(format_repo(repo))"
+using ToolCallFormat: @deftool
+
+@deftool "Extract code context from GitHub repositories" function gitingest(path::String => "GitHub repository URL or local path")
+    repo = ingest_repo(path)
+    "Gitingest results for '$path':\n\n$(format_repo(repo))"
 end

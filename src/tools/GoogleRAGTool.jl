@@ -1,8 +1,9 @@
+using ToolCallFormat: @deftool
+
 # Module-level adapter
 const GOOGLE_RAG_ADAPTER = GoogleRAGAdapter()
 
-"Search with Google and rerank results with RAG pipeline for higher quality results"
-@deftool GoogleRAGTool google_rag(query::String) = begin
+@deftool "Search with Google and rerank results with RAG pipeline for higher quality results" function google_rag(query::String => "Search query")
     response = OpenCacheLayer.get_content(GOOGLE_RAG_ADAPTER, query)
     results, elapsed, cost = response.results, response.elapsed, response.cost
 
@@ -18,5 +19,5 @@ const GOOGLE_RAG_ADAPTER = GoogleRAGAdapter()
         println("Cost: \$$(round(cost, digits=4))")
     end
 
-    tool.result = "Google RAG Search results for '$query':\n$result"
+    "Google RAG Search results for '$query':\n$result"
 end

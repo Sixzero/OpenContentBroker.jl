@@ -55,10 +55,14 @@ format_search_results(results::Vector{GitSearchResult}) = join([
     $(r.chunk)
     """ for r in results], "\n\n")
 
-"Search in the codebase of GitHub repositories"
-@deftool SearchGitingestTool search_gitingest(query::String, urls::CodeBlock) = begin
+using ToolCallFormat: @deftool, CodeBlock
+
+@deftool "Search in the codebase of GitHub repositories" function search_gitingest(
+    query::String => "Search query",
+    urls::CodeBlock => "GitHub repository URLs, one per line"
+)
     # Parse the code block to extract just the URLs
-    _, content = parse_code_block(urls.content)
+    _, content = parse_code_block(string(urls))
     url_list = filter(!isempty, strip.(split(content, '\n')))
 
     repos = [ingest_repo(url) for url in url_list]
@@ -69,5 +73,5 @@ format_search_results(results::Vector{GitSearchResult}) = join([
         println("\e[34mhttps://github.com/$(string(r.source))\e[0m")
     end
 
-    tool.result = "Search results for '$query' across $(length(url_list)) repositories:\n\n$(format_search_results(results))"
+    "Search results for '$query' across $(length(url_list)) repositories:\n\n$(format_search_results(results))"
 end

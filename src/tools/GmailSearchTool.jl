@@ -1,17 +1,16 @@
 using Dates: DateTime, now, Day
+using ToolCallFormat: @deftool
 
 # Module-level defaults
 const GMAIL_SEARCH_ADAPTER = GmailAdapter()
 const GMAIL_SEARCH_PIPELINE = EFFICIENT_PIPELINE()
 
-"Search relevant emails for a query"
-@deftool GmailSearchTool gmail_search(query::String) = begin
+@deftool "Search relevant emails for a query" function gmail_search(query::String => "Email search query")
     # Get emails
     emails = get_content(GMAIL_SEARCH_ADAPTER; from=now() - Day(7), max_results=100, labels=["INBOX"])
 
     if isempty(emails)
-        tool.result = "No emails found matching the criteria."
-        return tool.result
+        return "No emails found matching the criteria."
     end
 
     # Prepare email contents for reranking
@@ -43,5 +42,5 @@ const GMAIL_SEARCH_PIPELINE = EFFICIENT_PIPELINE()
         $chunk
         """)
     end
-    tool.result = "Reranked email results for '$query':\n\n$(join(results, "\n" * "-"^50 * "\n"))"
+    "Reranked email results for '$query':\n\n$(join(results, "\n" * "-"^50 * "\n"))"
 end
