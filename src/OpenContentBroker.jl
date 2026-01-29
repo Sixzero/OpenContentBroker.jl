@@ -9,6 +9,7 @@ using OpenCacheLayer
 using OpenCacheLayer: AbstractCacheLayer
 using EasyContext: AbstractRAGPipeline, AbstractTool, search
 using EasyContext: create_voyage_embedder, TwoLayerRAG, ReduceGPTReranker, TopK, BM25Embedder, execute
+using ToolCallFormat: @deftool, CodeBlock
 
 using RAGTools
 const RAG = RAGTools

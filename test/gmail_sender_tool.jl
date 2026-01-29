@@ -1,7 +1,6 @@
 using Test
-using EasyContext
 using OpenContentBroker: GmailSenderTool, parse_email_command
-using ToolCallFormat: ParsedCall
+using ToolCallFormat: ParsedCall, CodeBlock, create_tool
 
 @testset "GmailSenderTool Tests" begin
     @testset "parse_email_command" begin
@@ -58,9 +57,9 @@ Subject: Test Email
 Test body"""
 
         call = ParsedCall(name="gmail_send", content=cmd)
-        tool = EasyContext.create_tool(GmailSenderTool, call)
+        tool = create_tool(GmailSenderTool, call)
 
-        @test tool.cmd == cmd
-        @test isnothing(tool.last_response)
+        @test tool.content isa CodeBlock
+        @test tool.content.content == cmd
     end
 end

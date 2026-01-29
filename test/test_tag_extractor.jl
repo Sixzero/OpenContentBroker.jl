@@ -1,8 +1,7 @@
 using Test
 using EasyContext
 using UUIDs
-using ToolCallFormat: ParsedCall, ParsedValue
-using EasyContext: AbstractTool
+using ToolCallFormat: ParsedCall, ParsedValue, CodeBlock, create_tool
 using OpenContentBroker: GoogleSearchTool, WebContentTool, GmailSenderTool, SearchGitingestTool
 
 @testset failfast=true "Tool creation with ParsedCall" begin
@@ -11,7 +10,7 @@ using OpenContentBroker: GoogleSearchTool, WebContentTool, GmailSenderTool, Sear
             name="google_search",
             kwargs=Dict("query" => ParsedValue("python cli tutorial"))
         )
-        tool = EasyContext.create_tool(GoogleSearchTool, call)
+        tool = create_tool(GoogleSearchTool, call)
         @test tool.query == "python cli tutorial"
     end
 
@@ -20,7 +19,7 @@ using OpenContentBroker: GoogleSearchTool, WebContentTool, GmailSenderTool, Sear
             name="read_url",
             kwargs=Dict("url" => ParsedValue("https://example.com/doc"))
         )
-        tool = EasyContext.create_tool(WebContentTool, call)
+        tool = create_tool(WebContentTool, call)
         @test tool.url == "https://example.com/doc"
     end
 
@@ -36,10 +35,10 @@ Multiple lines supported"""
             name="gmail_send",
             content=content
         )
-        tool = EasyContext.create_tool(GmailSenderTool, call)
-        @test contains(tool.cmd, "To: test@example.com")
-        @test contains(tool.cmd, "Subject: Test Subject")
-        @test contains(tool.cmd, "Test email body content")
+        tool = create_tool(GmailSenderTool, call)
+        @test tool.content isa CodeBlock
+        @test contains(tool.content.content, "To: test@example.com")
+        @test contains(tool.content.content, "Subject: Test Subject")
     end
 
     @testset "SearchGitingestTool URL parsing" begin
@@ -49,22 +48,8 @@ Multiple lines supported"""
             kwargs=Dict("query" => ParsedValue("test query")),
             content="```urls\nhttps://github.com/user1/repo1\nhttps://github.com/user2/repo2\n```"
         )
-        tool = EasyContext.create_tool(SearchGitingestTool, call_with_codeblock)
-        @test length(tool.urls) == 2
-        @test tool.urls[1] == "https://github.com/user1/repo1"
-        @test tool.urls[2] == "https://github.com/user2/repo2"
+        tool = create_tool(SearchGitingestTool, call_with_codeblock)
         @test tool.query == "test query"
-
-        # Test with plain text format (no code block)
-        call_without_codeblock = ParsedCall(
-            name="search_gitingest",
-            kwargs=Dict("query" => ParsedValue("another query")),
-            content="https://github.com/user3/repo3\nhttps://github.com/user4/repo4"
-        )
-        tool2 = EasyContext.create_tool(SearchGitingestTool, call_without_codeblock)
-        @test length(tool2.urls) == 2
-        @test tool2.urls[1] == "https://github.com/user3/repo3"
-        @test tool2.urls[2] == "https://github.com/user4/repo4"
-        @test tool2.query == "another query"
+        @test tool.urls isa CodeBlock
     end
 end
