@@ -21,3 +21,6 @@ const GOOGLE_RAG_ADAPTER = GoogleRAGAdapter()
 
     "Google RAG Search results for '$query':\n$result"
 end
+
+# Backward compatibility alias
+const GoogleRAGTool = GoogleRagTool

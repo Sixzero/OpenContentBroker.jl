@@ -1,5 +1,5 @@
 using EasyContext: AbstractToolGenerator
-using ToolCallFormat: ParsedCall, toolname, get_description, tool_format
+using ToolCallFormat: ParsedCall, toolname, get_description
 
 export GoogleRAGToolGenerator
 
@@ -38,5 +38,3 @@ end
 EasyContext.toolname(::GoogleRAGToolGenerator) = "google_rag"
 EasyContext.toolname(::Type{GoogleRAGToolGenerator}) = "google_rag"
 EasyContext.get_description(::Type{GoogleRAGToolGenerator}) = ToolCallFormat.get_description(GoogleRAGTool)
-EasyContext.tool_format(::Type{GoogleRAGToolGenerator}) = :single_line
-EasyContext.tool_format(::GoogleRAGToolGenerator) = :single_line

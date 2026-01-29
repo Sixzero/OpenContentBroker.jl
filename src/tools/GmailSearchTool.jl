@@ -1,13 +1,16 @@
 using Dates: DateTime, now, Day
 using ToolCallFormat: @deftool
 
-# Module-level defaults
-const GMAIL_SEARCH_ADAPTER = GmailAdapter()
-const GMAIL_SEARCH_PIPELINE = EFFICIENT_PIPELINE()
+# Lazy-initialized adapters (avoid precompile failures from missing credentials)
+const _GMAIL_SEARCH_ADAPTER = Ref{Union{GmailAdapter, Nothing}}(nothing)
+const _GMAIL_SEARCH_PIPELINE = Ref{Union{AbstractRAGPipeline, Nothing}}(nothing)
+
+get_gmail_search_adapter() = (_GMAIL_SEARCH_ADAPTER[] === nothing && (_GMAIL_SEARCH_ADAPTER[] = GmailAdapter()); _GMAIL_SEARCH_ADAPTER[])
+get_gmail_search_pipeline() = (_GMAIL_SEARCH_PIPELINE[] === nothing && (_GMAIL_SEARCH_PIPELINE[] = EFFICIENT_PIPELINE()); _GMAIL_SEARCH_PIPELINE[])
 
 @deftool "Search relevant emails for a query" function gmail_search(query::String => "Email search query")
     # Get emails
-    emails = get_content(GMAIL_SEARCH_ADAPTER; from=now() - Day(7), max_results=100, labels=["INBOX"])
+    emails = get_content(get_gmail_search_adapter(); from=now() - Day(7), max_results=100, labels=["INBOX"])
 
     if isempty(emails)
         return "No emails found matching the criteria."
@@ -25,7 +28,7 @@ const GMAIL_SEARCH_PIPELINE = EFFICIENT_PIPELINE()
     ]
 
     println("Reranking $(length(email_texts)) emails...")
-    search_results = search(GMAIL_SEARCH_PIPELINE, email_texts, query)
+    search_results = search(get_gmail_search_pipeline(), email_texts, query)
     result_indices = [findfirst(t -> occursin(r, t), email_texts) for r in search_results]
 
     results = []

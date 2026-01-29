@@ -1,3 +1,4 @@
+using EasyContext
 using EasyContext: search, parse_code_block, NewlineChunker, SourcePath
 
 @kwdef struct GitChunk <: EasyContext.AbstractChunk

@@ -1,7 +1,8 @@
 using JSON3
 
-# Module-level adapter
-const GMAIL_SENDER_ADAPTER = GmailSenderAdapter()
+# Lazy-initialized adapter (avoid precompile failures from missing credentials)
+const _GMAIL_SENDER_ADAPTER = Ref{Union{GmailSenderAdapter, Nothing}}(nothing)
+get_gmail_sender_adapter() = (_GMAIL_SENDER_ADAPTER[] === nothing && (_GMAIL_SENDER_ADAPTER[] = GmailSenderAdapter()); _GMAIL_SENDER_ADAPTER[])
 
 """
 Parse email command format:
@@ -38,7 +39,7 @@ using ToolCallFormat: @deftool, CodeBlock
 @deftool "Send an email via Gmail" function gmail_send(content::CodeBlock => "Email in headers+body format")
     email_params = parse_email_command(string(content))
 
-    response = send_gmail(GMAIL_SENDER_ADAPTER;
+    response = send_gmail(get_gmail_sender_adapter();
         to=email_params["to"],
         subject=email_params["subject"],
         body=email_params["body"],
@@ -51,3 +52,6 @@ using ToolCallFormat: @deftool, CodeBlock
 
     isnothing(response) ? "No email sent, cancelled." : "Email sent successfully. Message ID: $(response.id)"
 end
+
+# Backward compatibility alias
+const GmailSenderTool = GmailSendTool
