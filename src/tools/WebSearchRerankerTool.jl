@@ -32,5 +32,5 @@ const WEB_RERANK_PIPELINE = EFFICIENT_PIPELINE()
         $(get_content(res))
         """ for res in search_results], "\n\n")
 
-    "Reranked search results for '$query':\n\n$formatted"
+    tool.result = "Reranked search results for '$query':\n\n$formatted"
 end

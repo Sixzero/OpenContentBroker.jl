@@ -7,8 +7,8 @@ const GMAIL_SENDER_ADAPTER = GmailSenderAdapter()
 Parse email command format:
 To: recipient@email.com
 Subject: Email Subject
-Cc: cc@email.com  # Optional
-Bcc: bcc@email.com  # Optional
+Cc: cc@example.com  # Optional
+Bcc: bcc@example.com  # Optional
 In-Reply-To: <message-id>  # Optional
 References: <thread-id>  # Optional
 
@@ -48,5 +48,5 @@ end
         references=get(email_params, "references", nothing)
     )
 
-    isnothing(response) ? "No email sent, cancelled." : "Email sent successfully. Message ID: $(response.id)"
+    tool.result = isnothing(response) ? "No email sent, cancelled." : "Email sent successfully. Message ID: $(response.id)"
 end

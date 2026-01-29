@@ -69,5 +69,5 @@ format_search_results(results::Vector{GitSearchResult}) = join([
         println("\e[34mhttps://github.com/$(string(r.source))\e[0m")
     end
 
-    "Search results for '$query' across $(length(url_list)) repositories:\n\n$(format_search_results(results))"
+    tool.result = "Search results for '$query' across $(length(url_list)) repositories:\n\n$(format_search_results(results))"
 end

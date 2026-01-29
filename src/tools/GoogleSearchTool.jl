@@ -10,5 +10,5 @@ const GOOGLE_SEARCH_ADAPTER = GoogleAdapter()
     for (i,r) in enumerate(results)
         println("$(i). $(r.title)\n   $(r.url)\n   $(r.content)\n")
     end
-    "Search results for '$query':\n\n$formatted"
+    tool.result = "Search results for '$query':\n\n$formatted"
 end

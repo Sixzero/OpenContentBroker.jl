@@ -18,5 +18,5 @@ const GOOGLE_RAG_ADAPTER = GoogleRAGAdapter()
         println("Cost: \$$(round(cost, digits=4))")
     end
 
-    "Google RAG Search results for '$query':\n$result"
+    tool.result = "Google RAG Search results for '$query':\n$result"
 end

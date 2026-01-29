@@ -9,7 +9,10 @@ const GMAIL_SEARCH_PIPELINE = EFFICIENT_PIPELINE()
     # Get emails
     emails = get_content(GMAIL_SEARCH_ADAPTER; from=now() - Day(7), max_results=100, labels=["INBOX"])
 
-    isempty(emails) && return "No emails found matching the criteria."
+    if isempty(emails)
+        tool.result = "No emails found matching the criteria."
+        return tool.result
+    end
 
     # Prepare email contents for reranking
     email_texts = [
@@ -40,5 +43,5 @@ const GMAIL_SEARCH_PIPELINE = EFFICIENT_PIPELINE()
         $chunk
         """)
     end
-    "Reranked email results for '$query':\n\n$(join(results, "\n" * "-"^50 * "\n"))"
+    tool.result = "Reranked email results for '$query':\n\n$(join(results, "\n" * "-"^50 * "\n"))"
 end
