@@ -6,7 +6,7 @@ const WEB_RERANK_WEB_ADAPTER = DictCacheLayer(FirecrawlAdapter())
 const WEB_RERANK_CHUNKER = HtmlChunker()
 const WEB_RERANK_PIPELINE = EFFICIENT_PIPELINE()
 
-@deftool "Search and rerank web content with RAG pipeline" function web_search_rerank(query::String => "Search query")
+@deftool "Search and rerank web content with RAG pipeline" function web_search_rerank("Search query" => query::String)
     # Get Google results
     google_results = OpenCacheLayer.get_content(WEB_RERANK_GOOGLE_ADAPTER, query)
 

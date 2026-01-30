@@ -8,7 +8,7 @@ const _GMAIL_SEARCH_PIPELINE = Ref{Union{AbstractRAGPipeline, Nothing}}(nothing)
 get_gmail_search_adapter() = (_GMAIL_SEARCH_ADAPTER[] === nothing && (_GMAIL_SEARCH_ADAPTER[] = GmailAdapter()); _GMAIL_SEARCH_ADAPTER[])
 get_gmail_search_pipeline() = (_GMAIL_SEARCH_PIPELINE[] === nothing && (_GMAIL_SEARCH_PIPELINE[] = EFFICIENT_PIPELINE()); _GMAIL_SEARCH_PIPELINE[])
 
-@deftool "Search relevant emails for a query" function gmail_search(query::String => "Email search query")
+@deftool "Search relevant emails for a query" function gmail_search("Email search query" => query::String)
     # Get emails
     emails = get_content(get_gmail_search_adapter(); from=now() - Day(7), max_results=100, labels=["INBOX"])
 

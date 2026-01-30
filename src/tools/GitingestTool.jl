@@ -75,7 +75,7 @@ $(join(["### $(f.path) ($(f.size) bytes)\n```\n$(f.content)\n```" for f in repo.
 
 using ToolCallFormat: @deftool
 
-@deftool "Extract code context from GitHub repositories" function gitingest(path::String => "GitHub repository URL or local path")
+@deftool "Extract code context from GitHub repositories" function gitingest("GitHub repository URL or local path" => path::String)
     repo = ingest_repo(path)
     "Gitingest results for '$path':\n\n$(format_repo(repo))"
 end

@@ -59,8 +59,8 @@ format_search_results(results::Vector{GitSearchResult}) = join([
 using ToolCallFormat: @deftool, CodeBlock
 
 @deftool "Search in the codebase of GitHub repositories" function search_gitingest(
-    query::String => "Search query",
-    urls::CodeBlock => "GitHub repository URLs, one per line"
+    "Search query" => query::String,
+    "GitHub repository URLs, one per line" => urls::CodeBlock
 )
     # Parse the code block to extract just the URLs
     _, content = parse_code_block(string(urls))

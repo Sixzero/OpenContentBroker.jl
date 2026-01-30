@@ -36,7 +36,7 @@ end
 
 using ToolCallFormat: @deftool, CodeBlock
 
-@deftool "Send an email via Gmail" function gmail_send(content::CodeBlock => "Email in headers+body format")
+@deftool "Send an email via Gmail" function gmail_send("Email in headers+body format" => content::CodeBlock)
     email_params = parse_email_command(string(content))
 
     response = send_gmail(get_gmail_sender_adapter();
