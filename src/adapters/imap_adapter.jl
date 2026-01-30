@@ -1,19 +1,19 @@
 using Base64
 using Dates
 using OpenCacheLayer
-using PyCall
+using PythonCall
 using Unicode
 
 # Lazy load Python modules
-const imaplib = Ref{PyObject}()
-const email = Ref{PyObject}()
-const imapclient = Ref{PyObject}()
+const _imaplib = Ref{Py}()
+const _email = Ref{Py}()
+const _imapclient = Ref{Py}()
 
 function ensure_py_modules()
-    if !isdefined(imaplib, :x)
-        imaplib[] = pyimport("imaplib")
-        email[] = pyimport("email")
-        imapclient[] = pyimport("imapclient")
+    if !isassigned(_imaplib)
+        _imaplib[] = pyimport("imaplib")
+        _email[] = pyimport("email")
+        _imapclient[] = pyimport("imapclient")
     end
 end
 
@@ -27,7 +27,7 @@ end
 
 mutable struct IMAPAdapter <: OpenCacheLayer.ChatsLikeAdapter
     config::IMAPConfig
-    connection::Union{Nothing, PyObject}
+    connection::Union{Nothing, Py}
 end
 # Constructor with default nothing for connection
 IMAPAdapter(config::IMAPConfig) = IMAPAdapter(config, nothing)
@@ -59,8 +59,8 @@ function ensure_connection!(adapter::IMAPAdapter)
     ensure_py_modules()  # Ensure Python modules are loaded
     if isnothing(adapter.connection)
         adapter.connection = adapter.config.use_ssl ? 
-            imaplib[].IMAP4_SSL(adapter.config.host, adapter.config.port) :
-            imaplib[].IMAP4(adapter.config.host, adapter.config.port)
+            _imaplib[].IMAP4_SSL(adapter.config.host, adapter.config.port) :
+            _imaplib[].IMAP4(adapter.config.host, adapter.config.port)
         
         adapter.connection.login(adapter.config.username, adapter.config.password)
     end
@@ -69,37 +69,50 @@ end
 
 function process_raw(adapter::IMAPAdapter, raw::Vector{UInt8})
     ensure_py_modules()  # Ensure Python modules are loaded
-    msg_data = email[].message_from_bytes(raw)
-    
+    msg_data = _email[].message_from_bytes(pybytes(raw))
+
     # Extract body considering multipart messages
     function get_body(msg)
-        if msg.is_multipart()
+        if pyconvert(Bool, msg.is_multipart())
             for part in msg.walk()
-                ctype = part.get_content_type()
+                ctype = pyconvert(String, part.get_content_type())
                 if ctype == "text/plain"
-                    return String(part.get_payload(decode=true))
+                    payload = part.get_payload(; decode=true)
+                    return pyisinstance(payload, pybuiltins.bytes) ?
+                        String(pyconvert(Vector{UInt8}, payload)) : ""
                 end
             end
             return ""
         else
-            return String(msg.get_payload(decode=true))
+            payload = msg.get_payload(; decode=true)
+            return pyisinstance(payload, pybuiltins.bytes) ?
+                String(pyconvert(Vector{UInt8}, payload)) : ""
         end
     end
 
+    subject = pyconvert(String, msg_data.get("Subject", ""))
+    from_addr = pyconvert(String, msg_data.get("From", ""))
+    to_addr = pyconvert(String, msg_data.get("To", ""))
+    message_id = pyconvert(String, msg_data.get("Message-ID", ""))
+    date_str = pyconvert(String, msg_data.get("Date", ""))
+    refs = pyconvert(String, msg_data.get("References", ""))
+    in_reply = msg_data.get("In-Reply-To", nothing)
+    in_reply_to = pyisnone(in_reply) ? nothing : pyconvert(String, in_reply)
+
     IMAPMessage(
-        msg_data.get("Subject", ""),
+        subject,
         get_body(msg_data),
-        msg_data.get("From", ""),
-        split(msg_data.get("To", ""), ","),
-        msg_data.get("Message-ID", ""),
+        from_addr,
+        split(to_addr, ","),
+        message_id,
         try
-            DateTime(msg_data.get("Date", ""))
+            DateTime(date_str)
         catch
             now()
         end,
         raw,
-        split(msg_data.get("References", ""), " "),
-        msg_data.get("In-Reply-To", nothing)
+        split(refs, " "),
+        in_reply_to
     )
 end
 
@@ -125,15 +138,19 @@ function OpenCacheLayer.get_content(adapter::IMAPAdapter;
     end
     
     # Search messages
-    typ, message_nums = conn.search(nothing, join(query, " "))
-    message_ids = split(String(message_nums[1]))
-    
+    result = conn.search(nothing, join(query, " "))
+    typ = result[0]
+    message_nums = result[1]
+    message_ids = split(pyconvert(String, message_nums[0]))
+
     # Fetch messages
     messages = IMAPMessage[]
     for id in message_ids[1:min(length(message_ids), max_results)]
-        typ, msg_data = conn.fetch(id, "(RFC822)")
-        email_body = msg_data[1][2]  # Get the email body
-        push!(messages, process_raw(adapter, Vector{UInt8}(email_body)))
+        result = conn.fetch(id, "(RFC822)")
+        typ = result[0]
+        msg_data = result[1]
+        email_body = msg_data[0][1]  # Get the email body (Python uses 0-indexing)
+        push!(messages, process_raw(adapter, pyconvert(Vector{UInt8}, email_body)))
     end
     
     sort!(messages, by = x -> x.date)
@@ -158,22 +175,28 @@ Lists available IMAP folders with proper UTF-8 decoding.
 function list_folders(adapter::IMAPAdapter)
     ensure_py_modules()  # Ensure Python modules are loaded
     conn = ensure_connection!(adapter)
-    typ, data = conn.list()
-    return map(data) do d
-        parts = split(String(d), "\"")
+    result = conn.list()
+    typ = result[0]
+    data = result[1]
+    folders = String[]
+    for i in 0:(pylen(data)-1)
+        d = data[i]
+        d_str = pyconvert(String, d)
+        parts = split(d_str, "\"")
         encoded = length(parts) > 2 ? String(parts[end][2:end]) : String(parts[end])
         try
             cleaned = replace(encoded, r"^\s*\/?\s*" => "")
-            decoded = imapclient[].imap_utf7.decode(cleaned)
-            String(transcode(String, Vector{UInt8}(decoded)))
+            decoded = _imapclient[].imap_utf7.decode(cleaned)
+            push!(folders, pyconvert(String, decoded))
         catch
             try
-                String(transcode(String, Vector{UInt8}(encoded)))
+                push!(folders, String(transcode(String, Vector{UInt8}(encoded))))
             catch
-                encoded
+                push!(folders, encoded)
             end
         end
-    end |> unique
+    end
+    return unique(folders)
 end
 
 """
@@ -192,7 +215,7 @@ function create_folder(adapter::IMAPAdapter, folder_name::String)
     
     conn = ensure_connection!(adapter)
     try
-        encoded_name = imapclient[].imap_utf7.encode(folder_name)
+        encoded_name = _imapclient[].imap_utf7.encode(folder_name)
         conn.create(encoded_name)
         return true
     catch e
@@ -208,11 +231,13 @@ end
 """
 function move_message(adapter::IMAPAdapter, message::IMAPMessage, target_folder::String)
     conn = ensure_connection!(adapter)
-    
+
     # Keressük meg az üzenet UID-ját
     conn.select("INBOX")
-    typ, data = conn.search(nothing, "HEADER Message-ID $(message.message_id)")
-    message_nums = split(String(data[1]))
+    result = conn.search(nothing, "HEADER Message-ID $(message.message_id)")
+    typ = result[0]
+    data = result[1]
+    message_nums = split(pyconvert(String, data[0]))
     
     if isempty(message_nums)
         @warn "Nem található az üzenet: $(message.message_id)"

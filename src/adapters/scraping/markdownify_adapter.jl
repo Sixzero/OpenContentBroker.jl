@@ -1,5 +1,5 @@
 using HTTP
-using PyCall
+using PythonCall
 using OpenCacheLayer
 using OpenCacheLayer: VALID, ASYNC, STALE
 using Dates
@@ -18,18 +18,18 @@ struct MarkdownifyContent <: AbstractWebContent
 end
 
 # Initialize markdownify lazily
-const markdownify = PyNULL()
+const _markdownify_module = Ref{Py}()
 
 function get_markdownify()
-    if markdownify == PyNULL()
+    if !isassigned(_markdownify_module)
         try
-            # TODO probably even better solutiion than markdownify: https://github.com/Goldziher/html-to-markdown
-            copy!(markdownify, pyimport("markdownify"))
+            # TODO probably even better solution than markdownify: https://github.com/Goldziher/html-to-markdown
+            _markdownify_module[] = pyimport("markdownify")
         catch e
             error("Failed to import markdownify. Install with: python3 -m pip install markdownify")
         end
     end
-    markdownify
+    _markdownify_module[]
 end
 
 function OpenCacheLayer.get_content(adapter::MarkdownifyAdapter, url::String)
@@ -47,8 +47,8 @@ function OpenCacheLayer.get_content(adapter::MarkdownifyAdapter, url::String)
         
         html_content = String(response.body)
         
-        # Convert to markdown using PyCall
-        markdown_content = get_markdownify().markdownify(html_content; heading_style="ATX")
+        # Convert to markdown using PythonCall
+        markdown_content = pyconvert(String, get_markdownify().markdownify(html_content; heading_style="ATX"))
         
         MarkdownifyContent(url, markdown_content, Dict{Symbol,Any}(), now())
         

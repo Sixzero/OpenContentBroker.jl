@@ -1,14 +1,14 @@
 using UUIDs
-using PyCall
+using PythonCall
 
 # Lazy load Python gitingest module
-const gitingest = PyNULL()
+const _gitingest_module = Ref{Py}()
 
 function ensure_gitingest()
-    if ispynull(gitingest)
-        copy!(gitingest, pyimport("gitingest"))
+    if !isassigned(_gitingest_module)
+        _gitingest_module[] = pyimport("gitingest")
     end
-    gitingest
+    _gitingest_module[]
 end
 
 # Immutable data structures
@@ -52,7 +52,10 @@ end
 ingest_repo(url::String) =
     let gi = ensure_gitingest()
         @show url
-        (summary, tree, content) = gi.ingest(url)
+        result = gi.ingest(url)
+        summary = pyconvert(String, result[0])
+        tree = pyconvert(String, result[1])
+        content = pyconvert(String, result[2])
         GitRepo(summary, tree, parse_content(content))
     end
 
