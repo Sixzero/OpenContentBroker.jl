@@ -1,0 +1,6 @@
+[deps]
+# Python dependencies for PythonCall.jl
+
+[pip.deps]
+markdownify = ""
+gitingest = ">=0.1.0"
