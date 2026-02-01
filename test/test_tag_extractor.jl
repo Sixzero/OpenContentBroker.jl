@@ -16,7 +16,7 @@ using OpenContentBroker: GoogleSearchTool, WebContentTool, GmailSenderTool, Sear
 
     @testset "WebContentTool creation" begin
         call = ParsedCall(
-            name="read_url",
+            name="web_content",
             kwargs=Dict("url" => ParsedValue("https://example.com/doc"))
         )
         tool = create_tool(WebContentTool, call)
