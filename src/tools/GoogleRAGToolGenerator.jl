@@ -54,3 +54,4 @@ ToolCallFormat.get_id(tool::GoogleRAGToolWithAdapter) = tool._id
 EasyContext.toolname(::GoogleRAGToolGenerator) = "google_rag"
 EasyContext.toolname(::Type{GoogleRAGToolGenerator}) = "google_rag"
 EasyContext.get_description(::Type{GoogleRAGToolGenerator}) = get_description(GoogleRAGTool)
+ToolCallFormat.get_tool_schema(::GoogleRAGToolGenerator) = ToolCallFormat.get_tool_schema(GoogleRAGTool)
