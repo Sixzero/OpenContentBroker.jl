@@ -1,7 +1,7 @@
 using Test
 using EasyContext
 using UUIDs
-using ToolCallFormat: ParsedCall, ParsedValue, CodeBlock, create_tool
+using ToolCallFormat: ParsedCall, ParsedValue, create_tool
 using OpenContentBroker: GoogleSearchTool, WebContentTool, GmailSenderTool, SearchGitingestTool
 
 @testset failfast=true "Tool creation with ParsedCall" begin
@@ -36,7 +36,7 @@ Multiple lines supported"""
             content=content
         )
         tool = create_tool(GmailSenderTool, call)
-        @test tool.content isa CodeBlock
+        @test tool.content isa String
         @test contains(tool.content.content, "To: test@example.com")
         @test contains(tool.content.content, "Subject: Test Subject")
     end
@@ -50,6 +50,6 @@ Multiple lines supported"""
         )
         tool = create_tool(SearchGitingestTool, call_with_codeblock)
         @test tool.query == "test query"
-        @test tool.urls isa CodeBlock
+        @test tool.urls isa String
     end
 end

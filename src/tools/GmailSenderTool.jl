@@ -34,9 +34,9 @@ function parse_email_command(cmd::String)
     result
 end
 
-using ToolCallFormat: @deftool, CodeBlock
+using ToolCallFormat: @deftool, TextBlock
 
-@deftool "Send an email via Gmail" function gmail_send("Email in headers+body format" => content::CodeBlock)
+@deftool "Send an email via Gmail" function gmail_send("Email in headers+body format" => content::TextBlock)
     email_params = parse_email_command(string(content))
 
     response = send_gmail(get_gmail_sender_adapter();

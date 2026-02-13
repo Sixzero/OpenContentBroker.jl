@@ -1,6 +1,6 @@
 using Test
 using OpenContentBroker: GmailSenderTool, parse_email_command
-using ToolCallFormat: ParsedCall, CodeBlock, create_tool
+using ToolCallFormat: ParsedCall, create_tool
 
 @testset "GmailSenderTool Tests" begin
     @testset "parse_email_command" begin
@@ -59,7 +59,7 @@ Test body"""
         call = ParsedCall(name="gmail_send", content=cmd)
         tool = create_tool(GmailSenderTool, call)
 
-        @test tool.content isa CodeBlock
+        @test tool.content isa String
         @test tool.content.content == cmd
     end
 end
