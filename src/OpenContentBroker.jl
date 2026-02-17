@@ -49,6 +49,8 @@ include("tools/GoogleRAGTool.jl")
 include("tools/GoogleRAGToolGenerator.jl")
 include("tools/WebscrapeSearchTool.jl")
 include("tools/WebContentTool.jl")
+include("tools/WebFetchTool.jl")
+include("tools/GoogleSearchToolGenerator.jl")
 
 include("adapters/imap_adapter.jl")
 
@@ -68,7 +70,8 @@ export AIRelevanceStrategy
 export GoogleSearchTool
 export GoogleRAGTool, GoogleRAGToolGenerator, GoogleRAGToolWithAdapter
 export GitingestTool, SearchGitingestTool
-export WebContentTool
+export WebContentTool, WebFetchTool
+export GoogleSearchToolGenerator
 export GmailSearchTool, GmailSenderTool
 export IMAPAdapter, IMAPMessage
 export GoogleRAGAdapter, GoogleRAGResult
