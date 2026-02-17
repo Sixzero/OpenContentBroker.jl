@@ -14,6 +14,8 @@ export GoogleSearchToolGenerator
     query::String
     tools::Vector
     model::Union{String, Nothing}
+    cost::Float64 = 0.0
+    elapsed::Float64 = 0.0
 end
 
 ToolCallFormat.get_id(t::GoogleSearchToolCall) = t._id
@@ -64,7 +66,13 @@ Fetch the most relevant URLs and synthesize an answer to the query."""
     agent.tool_mode = :native
 
     response = work(agent, user_msg; io=devnull, quiet=true)
-    content = response !== nothing ? something(response.content, "(no response)") : "(no response)"
+    if response !== nothing
+        content = something(response.content, "(no response)")
+        cmd.cost = something(response.cost, 0.0)
+        cmd.elapsed = something(response.elapsed, 0.0)
+    else
+        content = "(no response)"
+    end
     _google_search_gen_results[cmd._id] = content
     cmd
 end

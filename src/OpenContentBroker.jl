@@ -9,7 +9,7 @@ using OpenCacheLayer
 using OpenCacheLayer: AbstractCacheLayer
 using EasyContext: AbstractRAGPipeline, AbstractTool, search
 using EasyContext: create_voyage_embedder, TwoLayerRAG, ReduceGPTReranker, TopK, BM25Embedder, execute
-using ToolCallFormat: @deftool, TextBlock
+using ToolCallFormat: @deftool, TextBlock, register_tool_type!
 
 using RAGTools
 const RAG = RAGTools
@@ -75,4 +75,12 @@ export GoogleSearchToolGenerator
 export GmailSearchTool, GmailSenderTool
 export IMAPAdapter, IMAPMessage
 export GoogleRAGAdapter, GoogleRAGResult
+
+function __init__()
+    for T in [GitingestTool, SearchGitingestTool, GoogleSearchTool, GoogleRAGTool,
+              WebContentTool, GmailSearchTool, GmailSenderTool]
+        ToolCallFormat.register_tool_type!(ToolCallFormat.toolname(T), T)
+    end
+end
+
 end
