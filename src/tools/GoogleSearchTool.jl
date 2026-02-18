@@ -7,7 +7,7 @@ function GOOGLE_SEARCH_ADAPTER()
     _google_search_adapter_ref[]
 end
 
-@deftool "Search with Google" function google_search("Search query" => query::String, "Instructions for the summarizer: what to focus on, extract, or compare" => prompt::String = "")
+@deftool "Search with Google" function google_search("Search query" => query::String, "Summarizer focus instructions: what to extract, compare, or highlight from results. Default: 'Fetch the most relevant URLs and synthesize an answer to the query.'" => prompt::String = "")
     results = OpenCacheLayer.get_content(GOOGLE_SEARCH_ADAPTER(), query)
     formatted = join(["$(i). $(r.title)\n   $(r.url)\n   $(r.content)\n"
                      for (i,r) in enumerate(results)], "\n")
