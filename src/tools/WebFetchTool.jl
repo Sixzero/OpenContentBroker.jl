@@ -16,8 +16,7 @@ const WEB_FETCH_TAG = "web_fetch"
     url::String
     prompt::String
     model::Union{String, Nothing}
-    cost::Float64 = 0.0
-    elapsed::Float64 = 0.0
+    stats::EasyContext.SubAgentStats = EasyContext.SubAgentStats()
     result::Union{String, Nothing} = nothing
 end
 
@@ -50,15 +49,8 @@ $(content_str)"""
     )
 
 
-    response = work(agent, user_msg; io=devnull, quiet=true)
-    if response !== nothing
-        result = something(response.content, "(no response)")
-        cmd.cost = something(response.cost, 0.0)
-        cmd.elapsed = something(response.elapsed, 0.0)
-    else
-        result = "(no response)"
-    end
-    cmd.result = result
+    response = work(agent, user_msg; io=devnull, quiet=true, on_meta_ai=EasyContext.on_meta_ai(cmd.stats))
+    cmd.result = response !== nothing ? something(response.content, "(no response)") : "(no response)"
     cmd
 end
 
