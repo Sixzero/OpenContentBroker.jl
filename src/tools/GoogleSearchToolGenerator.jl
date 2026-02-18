@@ -16,12 +16,11 @@ export GoogleSearchToolGenerator
     model::Union{String, Nothing}
     cost::Float64 = 0.0
     elapsed::Float64 = 0.0
+    result::Union{String, Nothing} = nothing
 end
 
 ToolCallFormat.get_id(t::GoogleSearchToolCall) = t._id
 EasyContext.LLM_safetorun(::GoogleSearchToolCall) = true
-
-const _google_search_gen_results = Dict{UUID, String}()
 
 const GOOGLE_SEARCH_GEN_SYS_PROMPT = """You are a web research agent. You receive Google search results and have a web_fetch tool to read pages.
 
@@ -39,12 +38,12 @@ function ToolCallFormat.execute(cmd::GoogleSearchToolCall, ctx::AbstractContext)
     results = try
         OpenCacheLayer.get_content(GOOGLE_SEARCH_ADAPTER(), cmd.query)
     catch e
-        _google_search_gen_results[cmd._id] = "Google search failed: $(sprint(showerror, e))"
+        cmd.result = "Google search failed: $(sprint(showerror, e))"
         return cmd
     end
 
     if isempty(results)
-        _google_search_gen_results[cmd._id] = "No search results for '$(cmd.query)'"
+        cmd.result = "No search results for '$(cmd.query)'"
         return cmd
     end
 
@@ -63,7 +62,7 @@ Fetch the most relevant URLs and synthesize an answer to the query."""
         extractor_type = tools -> NativeExtractor(tools; no_confirm=true),
         sys_msg = GOOGLE_SEARCH_GEN_SYS_PROMPT,
     )
-    agent.tool_mode = :native
+
 
     response = work(agent, user_msg; io=devnull, quiet=true)
     if response !== nothing
@@ -73,11 +72,11 @@ Fetch the most relevant URLs and synthesize an answer to the query."""
     else
         content = "(no response)"
     end
-    _google_search_gen_results[cmd._id] = content
+    cmd.result = content
     cmd
 end
 
-ToolCallFormat.result2string(cmd::GoogleSearchToolCall) = pop!(_google_search_gen_results, cmd._id, "(no result)")
+ToolCallFormat.result2string(cmd::GoogleSearchToolCall) = something(cmd.result, "(no result)")
 
 # --- Generator ---
 @kwdef struct GoogleSearchToolGenerator <: AbstractToolGenerator
@@ -85,13 +84,25 @@ ToolCallFormat.result2string(cmd::GoogleSearchToolCall) = pop!(_google_search_ge
 end
 
 ToolCallFormat.toolname(::GoogleSearchToolGenerator) = "google_search"
+ToolCallFormat.toolname(::Type{GoogleSearchToolGenerator}) = "google_search"
+ToolCallFormat.toolname(::GoogleSearchToolCall) = "google_search"
+ToolCallFormat.toolname(::Type{GoogleSearchToolCall}) = "google_search"
 
 ToolCallFormat.get_description(::GoogleSearchToolGenerator) = ToolCallFormat.get_description(GoogleSearchTool)
 ToolCallFormat.get_tool_schema(::GoogleSearchToolGenerator) = ToolCallFormat.get_tool_schema(GoogleSearchTool)
+ToolCallFormat.get_tool_schema(::Type{GoogleSearchToolCall}) = ToolCallFormat.get_tool_schema(GoogleSearchTool)
 
 function ToolCallFormat.create_tool(gs::GoogleSearchToolGenerator, call::ParsedCall)
     query_pv = get(call.kwargs, "query", nothing)
     query = query_pv !== nothing ? query_pv.value : ""
     tools = [WebFetchTool(model=gs.model)]
     GoogleSearchToolCall(; query, tools, model=gs.model)
+end
+
+# Type-based create_tool for recreate_tool registry path
+function ToolCallFormat.create_tool(::Type{GoogleSearchToolCall}, call::ParsedCall; extra_kwargs...)
+    query_pv = get(call.kwargs, "query", nothing)
+    query = query_pv !== nothing ? query_pv.value : ""
+    tools = [WebFetchTool()]
+    GoogleSearchToolCall(; query, tools, model=nothing)
 end

@@ -18,12 +18,11 @@ const WEB_FETCH_TAG = "web_fetch"
     model::Union{String, Nothing}
     cost::Float64 = 0.0
     elapsed::Float64 = 0.0
+    result::Union{String, Nothing} = nothing
 end
 
 ToolCallFormat.get_id(t::WebFetchToolCall) = t._id
 EasyContext.LLM_safetorun(::WebFetchToolCall) = true
-
-const _web_fetch_results = Dict{UUID, String}()
 
 const WEB_FETCH_SYS_PROMPT = "You process web page content. Be concise, accurate, and focus on what the user asks. Output only the relevant information."
 
@@ -34,7 +33,7 @@ function ToolCallFormat.execute(cmd::WebFetchToolCall, ctx::AbstractContext)
         content = OpenCacheLayer.get_content(WEB_CONTENT_ADAPTER, cmd.url)
         content.content
     catch e
-        _web_fetch_results[cmd._id] = "Failed to fetch $(cmd.url): $(sprint(showerror, e))"
+        cmd.result = "Failed to fetch $(cmd.url): $(sprint(showerror, e))"
         return cmd
     end
 
@@ -49,7 +48,7 @@ $(content_str)"""
         extractor_type = tools -> NativeExtractor(tools; no_confirm=true),
         sys_msg = WEB_FETCH_SYS_PROMPT,
     )
-    agent.tool_mode = :native
+
 
     response = work(agent, user_msg; io=devnull, quiet=true)
     if response !== nothing
@@ -59,11 +58,11 @@ $(content_str)"""
     else
         result = "(no response)"
     end
-    _web_fetch_results[cmd._id] = result
+    cmd.result = result
     cmd
 end
 
-ToolCallFormat.result2string(cmd::WebFetchToolCall) = pop!(_web_fetch_results, cmd._id, "(no result)")
+ToolCallFormat.result2string(cmd::WebFetchToolCall) = something(cmd.result, "(no result)")
 
 # --- Generator ---
 @kwdef struct WebFetchTool <: AbstractToolGenerator
@@ -71,6 +70,9 @@ ToolCallFormat.result2string(cmd::WebFetchToolCall) = pop!(_web_fetch_results, c
 end
 
 ToolCallFormat.toolname(::WebFetchTool) = WEB_FETCH_TAG
+ToolCallFormat.toolname(::Type{WebFetchTool}) = WEB_FETCH_TAG
+ToolCallFormat.toolname(::WebFetchToolCall) = WEB_FETCH_TAG
+ToolCallFormat.toolname(::Type{WebFetchToolCall}) = WEB_FETCH_TAG
 
 const WEB_FETCH_SCHEMA = (
     name = WEB_FETCH_TAG,
@@ -82,6 +84,7 @@ const WEB_FETCH_SCHEMA = (
 )
 
 ToolCallFormat.get_tool_schema(::WebFetchTool) = WEB_FETCH_SCHEMA
+ToolCallFormat.get_tool_schema(::Type{WebFetchToolCall}) = WEB_FETCH_SCHEMA
 ToolCallFormat.get_description(::WebFetchTool) = description_from_schema(WEB_FETCH_SCHEMA)
 
 function ToolCallFormat.create_tool(wf::WebFetchTool, call::ParsedCall)
@@ -90,4 +93,13 @@ function ToolCallFormat.create_tool(wf::WebFetchTool, call::ParsedCall)
     prompt_pv = get(call.kwargs, "prompt", nothing)
     prompt = prompt_pv !== nothing ? prompt_pv.value : "Summarize this page."
     WebFetchToolCall(; url, prompt, model=wf.model)
+end
+
+# Type-based create_tool for recreate_tool registry path
+function ToolCallFormat.create_tool(::Type{WebFetchToolCall}, call::ParsedCall; extra_kwargs...)
+    url_pv = get(call.kwargs, "url", nothing)
+    url = url_pv !== nothing ? url_pv.value : ""
+    prompt_pv = get(call.kwargs, "prompt", nothing)
+    prompt = prompt_pv !== nothing ? prompt_pv.value : "Summarize this page."
+    WebFetchToolCall(; url, prompt, model=nothing)
 end
