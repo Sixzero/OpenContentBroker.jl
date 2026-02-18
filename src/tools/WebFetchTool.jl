@@ -30,7 +30,7 @@ function ToolCallFormat.execute(cmd::WebFetchToolCall, ctx::AbstractContext)
     model = something(cmd.model, "anthropic:anthropic/claude-haiku-4.5")
 
     content_str = try
-        content = OpenCacheLayer.get_content(WEB_CONTENT_ADAPTER, cmd.url)
+        content = OpenCacheLayer.get_content(get_web_content_adapter(), cmd.url)
         content.content
     catch e
         cmd.result = "Failed to fetch $(cmd.url): $(sprint(showerror, e))"
