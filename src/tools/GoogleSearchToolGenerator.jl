@@ -12,6 +12,7 @@ export GoogleSearchToolGenerator
 @kwdef mutable struct GoogleSearchToolCall <: EasyContext.AbstractTool
     _id::UUID = uuid4()
     query::String
+    prompt::String = ""
     tools::Vector
     model::Union{String, Nothing}
     cost::Float64 = 0.0
@@ -29,7 +30,7 @@ Your task:
 2. Use web_fetch to read the most relevant URLs (2-3 max)
 3. Synthesize the information into a clear, concise answer
 
-Be direct and factual. Cite sources when possible."""
+IMPORTANT: Always cite your sources. At the end of your answer, include a "Sources:" section listing the URLs you used."""
 
 function ToolCallFormat.execute(cmd::GoogleSearchToolCall, ctx::AbstractContext)
     model = something(cmd.model, "anthropic:anthropic/claude-haiku-4.5")
@@ -50,12 +51,14 @@ function ToolCallFormat.execute(cmd::GoogleSearchToolCall, ctx::AbstractContext)
     formatted = join(["$(i). $(r.title)\n   URL: $(r.url)\n   $(r.content)"
                       for (i,r) in enumerate(results)], "\n\n")
 
+    focus = isempty(cmd.prompt) ? "Fetch the most relevant URLs and synthesize an answer to the query." : cmd.prompt
+
     user_msg = """Search query: "$(cmd.query)"
 
 Search results:
 $formatted
 
-Fetch the most relevant URLs and synthesize an answer to the query."""
+$focus"""
 
     agent = create_FluidAgent(model;
         tools = cmd.tools,
@@ -95,14 +98,18 @@ ToolCallFormat.get_tool_schema(::Type{GoogleSearchToolCall}) = ToolCallFormat.ge
 function ToolCallFormat.create_tool(gs::GoogleSearchToolGenerator, call::ParsedCall)
     query_pv = get(call.kwargs, "query", nothing)
     query = query_pv !== nothing ? query_pv.value : ""
+    prompt_pv = get(call.kwargs, "prompt", nothing)
+    prompt = prompt_pv !== nothing ? prompt_pv.value : ""
     tools = [WebFetchTool(model=gs.model)]
-    GoogleSearchToolCall(; query, tools, model=gs.model)
+    GoogleSearchToolCall(; query, prompt, tools, model=gs.model)
 end
 
 # Type-based create_tool for recreate_tool registry path
 function ToolCallFormat.create_tool(::Type{GoogleSearchToolCall}, call::ParsedCall; extra_kwargs...)
     query_pv = get(call.kwargs, "query", nothing)
     query = query_pv !== nothing ? query_pv.value : ""
+    prompt_pv = get(call.kwargs, "prompt", nothing)
+    prompt = prompt_pv !== nothing ? prompt_pv.value : ""
     tools = [WebFetchTool()]
-    GoogleSearchToolCall(; query, tools, model=nothing)
+    GoogleSearchToolCall(; query, prompt, tools, model=nothing)
 end

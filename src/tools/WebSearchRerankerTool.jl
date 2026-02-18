@@ -1,8 +1,12 @@
 using ToolCallFormat: @deftool
 
-# Module-level adapters
+# Module-level adapters (lazy init for DictCacheLayer to avoid BaseDirs call during precompilation)
 const WEB_RERANK_GOOGLE_ADAPTER = GoogleAdapter()
-const WEB_RERANK_WEB_ADAPTER = DictCacheLayer(FirecrawlAdapter())
+const _WEB_RERANK_WEB_ADAPTER = Ref{Union{DictCacheLayer{FirecrawlAdapter},Nothing}}(nothing)
+function get_web_rerank_adapter()
+    _WEB_RERANK_WEB_ADAPTER[] === nothing && (_WEB_RERANK_WEB_ADAPTER[] = DictCacheLayer(FirecrawlAdapter()))
+    _WEB_RERANK_WEB_ADAPTER[]
+end
 const WEB_RERANK_CHUNKER = HtmlChunker()
 const WEB_RERANK_PIPELINE = EFFICIENT_PIPELINE()
 
@@ -14,7 +18,7 @@ const WEB_RERANK_PIPELINE = EFFICIENT_PIPELINE()
     contents = String[]
     urls = String[]
     for result in google_results
-        content = OpenCacheLayer.get_content(WEB_RERANK_WEB_ADAPTER, result.url)
+        content = OpenCacheLayer.get_content(get_web_rerank_adapter(), result.url)
         push!(contents, content.content)
         push!(urls, result.url)
     end
