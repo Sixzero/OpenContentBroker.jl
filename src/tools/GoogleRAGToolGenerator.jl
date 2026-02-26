@@ -10,6 +10,7 @@ export GoogleRAGToolGenerator
     adapter::GoogleRAGAdapter
     query::String
     result::String = ""
+    _tool_call_id::Union{String, Nothing} = nothing
 end
 
 # Generator for custom adapter configuration (optional - uses default if not specified)

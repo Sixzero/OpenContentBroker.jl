@@ -17,6 +17,7 @@ export GoogleSearchToolGenerator
     model::Union{String, Nothing}
     stats::EasyContext.SubAgentStats = EasyContext.SubAgentStats()
     result::Union{String, Nothing} = nothing
+    _tool_call_id::Union{String, Nothing} = nothing
 end
 
 ToolCallFormat.get_id(t::GoogleSearchToolCall) = t._id

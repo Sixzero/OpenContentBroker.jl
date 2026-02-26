@@ -18,6 +18,7 @@ const WEB_FETCH_TAG = "web_fetch"
     model::Union{String, Nothing}
     stats::EasyContext.SubAgentStats = EasyContext.SubAgentStats()
     result::Union{String, Nothing} = nothing
+    _tool_call_id::Union{String, Nothing} = nothing
 end
 
 ToolCallFormat.get_id(t::WebFetchToolCall) = t._id
