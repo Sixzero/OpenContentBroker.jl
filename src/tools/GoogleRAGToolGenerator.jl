@@ -1,6 +1,6 @@
 using EasyContext: AbstractToolGenerator
 import ToolCallFormat
-using ToolCallFormat: ParsedCall, toolname, get_description, AbstractContext
+using ToolCallFormat: ParsedCall, toolname, get_description, AbstractContext, ProcessResult
 
 export GoogleRAGToolGenerator
 
@@ -9,7 +9,7 @@ export GoogleRAGToolGenerator
     _id::UUID = uuid4()
     adapter::GoogleRAGAdapter
     query::String
-    result::String = ""
+    process_result::Union{ProcessResult, Nothing} = nothing
     _tool_call_id::Union{String, Nothing} = nothing
 end
 
@@ -44,10 +44,8 @@ function ToolCallFormat.execute(tool::GoogleRAGToolWithAdapter, ctx::AbstractCon
         println("Cost: \$$(round(cost, digits=4))")
     end
 
-    tool.result = "Google RAG Search results for '$(tool.query)':\n$result"
+    tool.process_result = ProcessResult("Google RAG Search results for '$(tool.query)':\n$result")
 end
-
-ToolCallFormat.result2string(tool::GoogleRAGToolWithAdapter) = tool.result
 ToolCallFormat.toolname(::GoogleRAGToolWithAdapter) = "google_rag"
 ToolCallFormat.toolname(::Type{GoogleRAGToolWithAdapter}) = "google_rag"
 ToolCallFormat.get_id(tool::GoogleRAGToolWithAdapter) = tool._id

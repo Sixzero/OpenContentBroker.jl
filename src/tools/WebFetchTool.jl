@@ -5,7 +5,7 @@
 
 using EasyContext: AbstractToolGenerator, create_FluidAgent, NativeExtractor, work, LLM_safetorun
 import ToolCallFormat
-using ToolCallFormat: ParsedCall, AbstractContext, description_from_schema
+using ToolCallFormat: ParsedCall, AbstractContext, description_from_schema, ProcessResult
 
 export WebFetchTool
 
@@ -17,7 +17,7 @@ const WEB_FETCH_TAG = "web_fetch"
     prompt::String
     model::Union{String, Nothing}
     stats::EasyContext.SubAgentStats = EasyContext.SubAgentStats()
-    result::Union{String, Nothing} = nothing
+    process_result::Union{ProcessResult, Nothing} = nothing
     _tool_call_id::Union{String, Nothing} = nothing
 end
 
@@ -33,7 +33,7 @@ function ToolCallFormat.execute(cmd::WebFetchToolCall, ctx::AbstractContext)
         content = OpenCacheLayer.get_content(get_web_content_adapter(), cmd.url)
         content.content
     catch e
-        cmd.result = "Failed to fetch $(cmd.url): $(sprint(showerror, e))"
+        cmd.process_result = ProcessResult("Failed to fetch $(cmd.url): $(sprint(showerror, e))")
         return cmd
     end
 
@@ -51,11 +51,9 @@ $(content_str)"""
 
 
     response = work(agent, user_msg; io=devnull, quiet=true, on_meta_ai=EasyContext.on_meta_ai(cmd.stats))
-    cmd.result = response !== nothing ? something(response.content, "(no response)") : "(no response)"
+    cmd.process_result = ProcessResult(response !== nothing ? something(response.content, "(no response)") : "(no response)")
     cmd
 end
-
-ToolCallFormat.result2string(cmd::WebFetchToolCall) = something(cmd.result, "(no result)")
 
 # --- Generator ---
 @kwdef struct WebFetchTool <: AbstractToolGenerator

@@ -5,7 +5,7 @@
 
 using EasyContext: AbstractToolGenerator, create_FluidAgent, NativeExtractor, work, LLM_safetorun
 import ToolCallFormat
-using ToolCallFormat: ParsedCall, AbstractContext
+using ToolCallFormat: ParsedCall, AbstractContext, ProcessResult
 
 export GoogleSearchToolGenerator
 
@@ -16,7 +16,7 @@ export GoogleSearchToolGenerator
     tools::Vector
     model::Union{String, Nothing}
     stats::EasyContext.SubAgentStats = EasyContext.SubAgentStats()
-    result::Union{String, Nothing} = nothing
+    process_result::Union{ProcessResult, Nothing} = nothing
     _tool_call_id::Union{String, Nothing} = nothing
 end
 
@@ -39,12 +39,12 @@ function ToolCallFormat.execute(cmd::GoogleSearchToolCall, ctx::AbstractContext)
     results = try
         OpenCacheLayer.get_content(GOOGLE_SEARCH_ADAPTER(), cmd.query)
     catch e
-        cmd.result = "Google search failed: $(sprint(showerror, e))"
+        cmd.process_result = ProcessResult("Google search failed: $(sprint(showerror, e))")
         return cmd
     end
 
     if isempty(results)
-        cmd.result = "No search results for '$(cmd.query)'"
+        cmd.process_result = ProcessResult("No search results for '$(cmd.query)'")
         return cmd
     end
 
@@ -68,11 +68,9 @@ $focus"""
 
 
     response = work(agent, user_msg; io=devnull, quiet=true, on_meta_ai=EasyContext.on_meta_ai(cmd.stats))
-    cmd.result = response !== nothing ? something(response.content, "(no response)") : "(no response)"
+    cmd.process_result = ProcessResult(response !== nothing ? something(response.content, "(no response)") : "(no response)")
     cmd
 end
-
-ToolCallFormat.result2string(cmd::GoogleSearchToolCall) = something(cmd.result, "(no result)")
 
 # --- Generator ---
 @kwdef struct GoogleSearchToolGenerator <: AbstractToolGenerator
