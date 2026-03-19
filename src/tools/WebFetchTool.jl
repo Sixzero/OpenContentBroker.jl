@@ -29,11 +29,16 @@ const WEB_FETCH_SYS_PROMPT = "You process web page content. Be concise, accurate
 function ToolCallFormat.execute(cmd::WebFetchToolCall, ctx::AbstractContext)
     model = something(cmd.model, "anthropic:anthropic/claude-haiku-4.5")
 
-    content_str = try
-        content = OpenCacheLayer.get_content(get_web_content_adapter(), cmd.url)
-        content.content
+    content = try
+        OpenCacheLayer.get_content(get_web_content_adapter(), cmd.url)
     catch e
         cmd.process_result = ProcessResult("Failed to fetch $(cmd.url): $(sprint(showerror, e))")
+        return cmd
+    end
+
+    # MarkdownifyAdapter catches errors internally — check metadata before sending to LLM
+    if haskey(content.metadata, :error)
+        cmd.process_result = ProcessResult("Failed to fetch $(cmd.url): $(content.content)")
         return cmd
     end
 
@@ -41,14 +46,13 @@ function ToolCallFormat.execute(cmd::WebFetchToolCall, ctx::AbstractContext)
 
 URL: $(cmd.url)
 Content:
-$(content_str)"""
+$(content.content)"""
 
     agent = create_FluidAgent(model;
         tools = [],
         extractor_type = tools -> NativeExtractor(tools; no_confirm=true),
         sys_msg = WEB_FETCH_SYS_PROMPT,
     )
-
 
     response = work(agent, user_msg; io=devnull, quiet=true, on_meta_ai=EasyContext.on_meta_ai(cmd.stats))
     cmd.process_result = ProcessResult(response !== nothing ? something(response.content, "(no response)") : "(no response)")
