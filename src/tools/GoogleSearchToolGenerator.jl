@@ -15,6 +15,7 @@ export GoogleSearchToolGenerator
     prompt::String = ""
     tools::Vector
     model::Union{String, Nothing}
+    timeout::Float64 = 60.0
     stats::EasyContext.SubAgentStats = EasyContext.SubAgentStats()
     process_result::Union{ProcessResult, Nothing} = nothing
     _tool_call_id::Union{String, Nothing} = nothing
@@ -66,9 +67,13 @@ $focus"""
         sys_msg = GOOGLE_SEARCH_GEN_SYS_PROMPT,
     )
 
-
-    response = work(agent, user_msg; io=devnull, quiet=true, on_meta_ai=EasyContext.on_meta_ai(cmd.stats))
-    cmd.process_result = ProcessResult(response !== nothing ? something(response.content, "(no response)") : "(no response)")
+    response = work(agent, user_msg; io=devnull, quiet=true, rethrow_on_interrupt=false, on_meta_ai=EasyContext.on_meta_ai(cmd.stats))
+    content = if response !== nothing && response.content !== nothing
+        response.content
+    else
+        "Google search for '$(cmd.query)' failed to produce a summary."
+    end
+    cmd.process_result = ProcessResult(content)
     cmd
 end
 
