@@ -15,7 +15,7 @@ export GoogleSearchToolGenerator
     prompt::String = ""
     tools::Vector
     model::Union{String, Nothing}
-    timeout::Float64 = 60.0
+    timeout::Float64 = 120.0
     stats::EasyContext.SubAgentStats = EasyContext.SubAgentStats()
     process_result::Union{ProcessResult, Nothing} = nothing
     _tool_call_id::Union{String, Nothing} = nothing
