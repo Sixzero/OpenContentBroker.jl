@@ -4,7 +4,7 @@ using ToolCallFormat
 
 # Test WebFetchTool
 wf = WebFetchTool()
-call = ToolCallFormat.ParsedCall(name="web_fetch", kwargs=Dict(
+call = ToolCallFormat.ParsedCall(name="webfetch", kwargs=Dict(
     "url"    => ToolCallFormat.ParsedValue(value="https://julialang.org", raw="https://julialang.org"),
     "prompt" => ToolCallFormat.ParsedValue(value="What is Julia? One paragraph.", raw="What is Julia? One paragraph."),
 ))

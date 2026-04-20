@@ -24,11 +24,11 @@ end
 ToolCallFormat.get_id(t::GoogleSearchToolCall) = t._id
 EasyContext.LLM_safetorun(::GoogleSearchToolCall) = true
 
-const GOOGLE_SEARCH_GEN_SYS_PROMPT = """You are a web research agent. You receive Google search results and have a web_fetch tool to read pages.
+const GOOGLE_SEARCH_GEN_SYS_PROMPT = """You are a web research agent. You receive Google search results and have a webfetch tool to read pages.
 
 Your task:
 1. Review the search results below
-2. Use web_fetch to read the most relevant URLs (2-3 max)
+2. Use webfetch to read the most relevant URLs (2-3 max)
 3. Synthesize the information into a clear, concise answer
 
 IMPORTANT: Always cite your sources. At the end of your answer, include a "Sources:" section listing the URLs you used."""

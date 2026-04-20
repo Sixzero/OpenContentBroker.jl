@@ -9,7 +9,7 @@ using ToolCallFormat: ParsedCall, AbstractContext, description_from_schema, Proc
 
 export WebFetchTool
 
-const WEB_FETCH_TAG = "web_fetch"
+const WEB_FETCH_TAG = "webfetch"
 
 @kwdef mutable struct WebFetchToolCall <: EasyContext.AbstractTool
     _id::UUID = uuid4()
