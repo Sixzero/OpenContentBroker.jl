@@ -74,10 +74,11 @@ end
 
 function OpenCacheLayer.get_content(adapter::MarkdownifyAdapter, url::String)
     try
-        # Fetch using HTTP.jl with timeout
-        response = HTTP.get(url; 
+        # Fetch using HTTP.jl with timeout (retry=true is default; bump retries for transient task failures)
+        response = HTTP.get(url;
             headers=collect(adapter.headers),
-            readtimeout=adapter.timeout
+            readtimeout=adapter.timeout,
+            retries=2,
         )
         
         response.status != 200 && return MarkdownifyContent(
