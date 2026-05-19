@@ -1,10 +1,10 @@
 using ToolCallFormat: @deftool
 
 # Lazy-initialized adapter (reads ENV at first use, not precompile time)
-# Uses Tavily as primary (Google Custom Search project access currently blocked).
+# Uses SerpAPI(google) because direct Google Custom Search project is blocked.
 const _google_search_adapter_ref = Ref{Union{Nothing,AbstractSearchAdapter}}(nothing)
 function GOOGLE_SEARCH_ADAPTER()
-    _google_search_adapter_ref[] === nothing && (_google_search_adapter_ref[] = TavilyAdapter())
+    _google_search_adapter_ref[] === nothing && (_google_search_adapter_ref[] = SerpAdapter(engine="google"))
     _google_search_adapter_ref[]
 end
 

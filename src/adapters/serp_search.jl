@@ -8,12 +8,12 @@ using OpenCacheLayer
     engine::String = "google"  # Can be: google, bing, baidu, yandex, yahoo
 end
 
-function OpenCacheLayer.get_content(adapter::SerpAdapter, query::String)
+function OpenCacheLayer.get_content(adapter::SerpAdapter, query::String; num::Int=10)
     response = HTTP.post(
         "https://google.serper.dev/search?engine=$(adapter.engine)",
         ["X-API-KEY" => adapter.api_key,
          "Content-Type" => "application/json"],
-        JSON3.write(Dict("q" => query))
+        JSON3.write(Dict("q" => query, "num" => num))
     )
     
     data = JSON3.read(response.body)
