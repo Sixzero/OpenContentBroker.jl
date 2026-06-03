@@ -40,12 +40,12 @@ function ToolCallFormat.execute(cmd::GoogleSearchToolCall, ctx::AbstractContext)
     results = try
         OpenCacheLayer.get_content(GOOGLE_SEARCH_ADAPTER(), cmd.query)
     catch e
-        cmd.process_result = ProcessResult("Google search failed: $(sprint(showerror, e))")
+        cmd.process_result = ProcessResult("Google search failed: $(sprint(showerror, e))", 1)
         return cmd
     end
 
     if isempty(results)
-        cmd.process_result = ProcessResult("No search results for '$(cmd.query)'")
+        cmd.process_result = ProcessResult("No search results for '$(cmd.query)'", 1)
         return cmd
     end
 

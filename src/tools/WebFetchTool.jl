@@ -33,7 +33,7 @@ function ToolCallFormat.execute(cmd::WebFetchToolCall, ctx::AbstractContext)
     content = try
         OpenCacheLayer.get_content(get_web_content_adapter(), cmd.url)
     catch e
-        cmd.process_result = ProcessResult("Failed to fetch $(cmd.url): $(sprint(showerror, e))")
+        cmd.process_result = ProcessResult("Failed to fetch $(cmd.url): $(sprint(showerror, e))", 1)
         return cmd
     end
 
