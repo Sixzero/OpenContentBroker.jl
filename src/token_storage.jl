@@ -1,15 +1,19 @@
 using BaseDirs
 
+# BaseDirs v1.4 renamed `Project` -> `App` (`Project` is now a depwarn shim).
+# Bind to whichever the installed version provides so the field type stays valid.
+const BaseDirsApp = isdefined(BaseDirs, :App) ? BaseDirs.App : BaseDirs.Project
+
 abstract type TokenStorage end
 
 """
 FileStorage that uses BaseDirs to store tokens in specific files
 """
 struct FileStorage <: TokenStorage
-    project::BaseDirs.Project
+    project::BaseDirsApp
 end
 
-FileStorage(name::AbstractString) = FileStorage(BaseDirs.Project(name))
+FileStorage(name::AbstractString) = FileStorage(BaseDirsApp(name))
 
 function get_token_path(storage::FileStorage; filename::String="tokens.env")
     BaseDirs.User.config(storage.project, filename; create=true)
