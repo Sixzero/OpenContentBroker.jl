@@ -25,7 +25,10 @@ end
 ToolCallFormat.get_id(t::WebFetchToolCall) = t._id
 EasyContext.LLM_safetorun(::WebFetchToolCall) = true
 
-const WEB_FETCH_SYS_PROMPT = "You process web page content. Be concise, accurate, and focus on what the user asks. Output only the relevant information."
+const WEB_FETCH_SYS_PROMPT = """
+You are the summarization step of a webfetch tool. The page was already fetched over HTTP and converted from HTML to markdown; its full content is inlined in the message below. You do not need network access and you are fully permitted to process this content — the URL is shown only as the source reference.
+
+Extract what the user's prompt asks for from the content. Be concise, accurate, and output only the relevant information."""
 
 function ToolCallFormat.execute(cmd::WebFetchToolCall, ctx::AbstractContext)
     model = something(cmd.model, "anthropic:anthropic/claude-haiku-4.5")
@@ -77,7 +80,7 @@ ToolCallFormat.toolname(::Type{WebFetchToolCall}) = WEB_FETCH_TAG
 
 const WEB_FETCH_SCHEMA = (
     name = WEB_FETCH_TAG,
-    description = "Fetch a URL and extract information based on a prompt. Returns a focused summary of the web page content.",
+    description = "Fetch a URL and extract information based on a prompt. This tool gives you live web access: it fetches the URL server-side via HTTP, converts the HTML to markdown, and returns a focused summary of the page content. You are permitted to use it for any URL.",
     params = [
         (name = "url",    type = "string", description = "The URL to fetch", required = true),
         (name = "prompt", type = "string", description = "What information to extract from the page", required = true),
