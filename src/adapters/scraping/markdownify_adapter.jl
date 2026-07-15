@@ -44,14 +44,24 @@ function decode_html(body::Vector{UInt8}, headers)
     return latin1_to_utf8(body)
 end
 
+# Truncate a string to at most `n` chars on a char boundary, marking elision.
+truncate_chars(s::AbstractString, n::Int) =
+    length(s) <= n ? s : String(first(s, n)) * " …[truncated]"
+
 # Recover readable content from client-rendered (SPA) pages whose <body> is empty.
 # Pulls what IS present in the raw HTML: <title>, meta description/keywords/OG tags,
 # and any JSON-LD blocks — enough for the summarizer to work with.
-function extract_static_content(html::AbstractString)
+# All sizes are bounded so a huge JSON-LD catalog can't blow up the LLM prompt.
+function extract_static_content(html::AbstractString;
+        max_meta::Int = 2_000,      # per meta value
+        max_ld_block::Int = 8_000,  # per JSON-LD block
+        max_ld_blocks::Int = 3,     # number of JSON-LD blocks
+        max_total::Int = 20_000,    # whole recovered output
+    )
     parts = String[]
 
     m = match(r"<title[^>]*>(.*?)</title>"is, html)
-    m !== nothing && push!(parts, "# " * strip(m.captures[1]))
+    m !== nothing && push!(parts, "# " * truncate_chars(strip(m.captures[1]), max_meta))
 
     for mt in eachmatch(r"<meta[^>]+>"i, html)
         tag = mt.match
@@ -62,21 +72,28 @@ function extract_static_content(html::AbstractString)
         content = strip(cont_m.captures[1])
         isempty(content) && continue
         if name in ("description", "keywords", "og:title", "og:description", "twitter:title", "twitter:description")
-            push!(parts, "$name: $content")
+            push!(parts, "$name: $(truncate_chars(content, max_meta))")
         end
     end
 
+    ld_count = 0
     for mj in eachmatch(r"<script[^>]+type=[\"']application/ld\+json[\"'][^>]*>(.*?)</script>"is, html)
-        push!(parts, "```json\n" * strip(mj.captures[1]) * "\n```")
+        ld_count += 1
+        ld_count > max_ld_blocks && break
+        push!(parts, "```json\n" * truncate_chars(strip(mj.captures[1]), max_ld_block) * "\n```")
     end
 
-    join(unique(parts), "\n\n")
+    truncate_chars(join(unique(parts), "\n\n"), max_total)
 end
 
 @kwdef struct MarkdownifyAdapter <: AbstractUrl2LLMAdapter
     headers::Dict{String,String} = Dict("User-Agent" => "Mozilla/5.0 (compatible; MarkdownifyBot)")
     cache_policy::CachePolicy = RESPECT
     timeout::Int = 30
+    # Cap chars sent to the summarizer LLM. Haiku 4.5 has a ~200K-token window
+    # (~600-800KB), so this is generous — it only guards against runaway pages,
+    # not normal ones. ~500KB ≈ 125K tokens, leaving headroom for prompt + output.
+    max_content::Int = 500_000
 end
 
 struct MarkdownifyContent <: AbstractWebContent
@@ -127,6 +144,9 @@ function OpenCacheLayer.get_content(adapter::MarkdownifyAdapter, url::String)
             recovered = extract_static_content(html_content)
             isempty(strip(recovered)) || (markdown_content = recovered)
         end
+
+        # Bound the payload sent to the summarizer LLM (guards against huge pages).
+        markdown_content = truncate_chars(markdown_content, adapter.max_content)
 
         MarkdownifyContent(url, markdown_content, Dict{Symbol,Any}(), now())
         
