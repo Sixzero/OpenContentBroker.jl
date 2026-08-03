@@ -73,6 +73,10 @@ $focus"""
     else
         "Google search for '$(cmd.query)' failed to produce a summary."
     end
+
+    searched = join(["- $(r.title) — $(r.url)" for r in results], "\n")
+    content *= "\n\n<details><summary>Searched $(length(results)) results</summary>\n\n$searched\n</details>"
+
     cmd.process_result = ProcessResult(content)
     cmd
 end
