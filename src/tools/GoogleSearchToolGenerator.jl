@@ -19,6 +19,10 @@ export GoogleSearchToolGenerator
     stats::EasyContext.SubAgentStats = EasyContext.SubAgentStats()
     process_result::Union{ProcessResult, Nothing} = nothing
     _tool_call_id::Union{String, Nothing} = nothing
+    # Progress hook: called with the raw search results as soon as the Google API
+    # returns, before the summarizer sub-agent runs. Lets hosts push the source
+    # list to a UI while the (slow) synthesis is still in flight.
+    on_results::Union{Function, Nothing} = nothing
 end
 
 ToolCallFormat.get_id(t::GoogleSearchToolCall) = t._id
@@ -47,6 +51,10 @@ function ToolCallFormat.execute(cmd::GoogleSearchToolCall, ctx::AbstractContext)
     if isempty(results)
         cmd.process_result = ProcessResult("No search results for '$(cmd.query)'", 1)
         return cmd
+    end
+
+    if cmd.on_results !== nothing
+        try cmd.on_results(results) catch e @warn "google_search on_results hook failed" exception=e end
     end
 
     formatted = join(["$(i). $(r.title)\n   URL: $(r.url)\n   $(r.content)"
