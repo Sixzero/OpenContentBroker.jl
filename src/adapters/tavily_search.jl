@@ -8,14 +8,14 @@ using OpenCacheLayer
     max_results::Int = 5
 end
 
-function OpenCacheLayer.get_content(adapter::TavilyAdapter, query::String)
+function OpenCacheLayer.get_content(adapter::TavilyAdapter, query::String; num::Int=adapter.max_results)
     response = HTTP.post(
         "https://api.tavily.com/search",
         ["Content-Type" => "application/json",
          "Authorization" => "Bearer $(adapter.api_key)"],
         JSON3.write(Dict(
             "query" => query,
-            "max_results" => adapter.max_results
+            "max_results" => num
         ))
     )
     

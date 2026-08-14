@@ -1,10 +1,12 @@
 using ToolCallFormat: @deftool
 
 # Lazy-initialized adapter (reads ENV at first use, not precompile time)
-# Uses SerpAPI(google) because direct Google Custom Search project is blocked.
+# Serper first (cheap Google SERP); Tavily if Serper is empty/out of credits.
 const _google_search_adapter_ref = Ref{Union{Nothing,AbstractSearchAdapter}}(nothing)
 function GOOGLE_SEARCH_ADAPTER()
-    _google_search_adapter_ref[] === nothing && (_google_search_adapter_ref[] = SerpAdapter(engine="google"))
+    if _google_search_adapter_ref[] === nothing
+        _google_search_adapter_ref[] = FallbackSearchAdapter()
+    end
     _google_search_adapter_ref[]
 end
 

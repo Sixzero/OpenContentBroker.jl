@@ -18,10 +18,7 @@ function get_global_web_cache()
 end
 
 @kwdef struct GoogleRAGAdapter <: StatusBasedAdapter
-    # Was GoogleAdapter; using SerpAdapter(google) because direct Custom Search project is blocked.
-    google_adapter::AbstractSearchAdapter = SerpAdapter(engine="google")
-    fallback_adapter::Union{AbstractSearchAdapter, Nothing} = TavilyAdapter()
-    # Removed web_adapter field - now using global cache
+    google_adapter::AbstractSearchAdapter = FallbackSearchAdapter()
     chunker::HtmlChunker = HtmlChunker()
     rag_pipeline::AbstractRAGPipeline = EFFICIENT_PIPELINE(; model="gemfl")
     max_results::Int = 10
@@ -37,19 +34,7 @@ end
 function OpenCacheLayer.get_content(adapter::GoogleRAGAdapter, query::String)
     start_time = time()
 
-    # Get top Google results (fall back on exception or empty result)
-    google_results = try
-        OpenCacheLayer.get_content(adapter.google_adapter, query; num=adapter.max_results)
-    catch e
-        println("⚠️  Google search threw: $(sprint(showerror, e))")
-        SearchResult[]
-    end
-
-    if isempty(google_results) && !isnothing(adapter.fallback_adapter)
-        println("🔄 Google returned no results, falling back to alternative search...")
-        fallback_results = OpenCacheLayer.get_content(adapter.fallback_adapter, query)
-        google_results = isa(fallback_results, Vector) ? fallback_results : fallback_results.results
-    end
+    google_results = OpenCacheLayer.get_content(adapter.google_adapter, query; num=adapter.max_results)
     
     # Filter out PDF URLs
     filtered_results = filter(result -> !should_skip_url(result.url), google_results)
