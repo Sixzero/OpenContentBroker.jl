@@ -1,5 +1,4 @@
 using HTTP
-using PythonCall
 using OpenCacheLayer
 using OpenCacheLayer: VALID, ASYNC, STALE
 using Dates
@@ -103,20 +102,6 @@ struct MarkdownifyContent <: AbstractWebContent
     timestamp::DateTime
 end
 
-# Initialize markdownify lazily
-const _markdownify_module = Ref{Py}()
-
-function get_markdownify()
-    if !isassigned(_markdownify_module)
-        try
-            # TODO probably even better solution than markdownify: https://github.com/Goldziher/html-to-markdown
-            _markdownify_module[] = pyimport("markdownify")
-        catch e
-            error("Failed to import markdownify. Install with: python3 -m pip install markdownify")
-        end
-    end
-    _markdownify_module[]
-end
 
 function OpenCacheLayer.get_content(adapter::MarkdownifyAdapter, url::String)
     try
@@ -134,8 +119,8 @@ function OpenCacheLayer.get_content(adapter::MarkdownifyAdapter, url::String)
 
         html_content = decode_html(response.body, response.headers)
 
-        # Convert to markdown using PythonCall
-        markdown_content = pyconvert(String, get_markdownify().markdownify(html_content; heading_style="ATX"))
+        # Convert to markdown (pure Julia, Gumbo-based — see html_to_markdown.jl)
+        markdown_content = html_to_markdown(html_content)
 
         # SPA fallback: client-rendered pages (Next.js/React) have an empty <body>;
         # markdownify strips the <script> payload, leaving nothing. Recover the content
@@ -161,4 +146,4 @@ OpenCacheLayer.is_cache_valid(content::MarkdownifyContent, adapter::MarkdownifyA
 
 OpenCacheLayer.get_timestamp(content::MarkdownifyContent) = content.timestamp
 
-OpenCacheLayer.get_adapter_hash(adapter::MarkdownifyAdapter) = "MARKDOWNIFY"
+OpenCacheLayer.get_adapter_hash(adapter::MarkdownifyAdapter) = "MARKDOWNIFY_JL"  # _JL: pure-Julia converter output differs from the old python-markdownify

@@ -38,6 +38,7 @@ include("adapters/scraping/web_scraper.jl")
 include("adapters/scraping/firecrawl_scraper.jl")
 include("adapters/scraping/crawlee_adapter.jl")
 include("adapters/scraping/scrapy_adapter.jl")
+include("adapters/scraping/html_to_markdown.jl")
 include("adapters/scraping/markdownify_adapter.jl")
 include("evals/search_llm_eval.jl")
 
