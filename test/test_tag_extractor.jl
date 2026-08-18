@@ -37,8 +37,8 @@ Multiple lines supported"""
         )
         tool = create_tool(GmailSenderTool, call)
         @test tool.content isa String
-        @test contains(tool.content.content, "To: test@example.com")
-        @test contains(tool.content.content, "Subject: Test Subject")
+        @test contains(tool.content, "To: test@example.com")
+        @test contains(tool.content, "Subject: Test Subject")
     end
 
     @testset "SearchGitingestTool URL parsing" begin
