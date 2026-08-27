@@ -4,24 +4,24 @@ using Dates
 using OpenCacheLayer
 
 @kwdef struct TavilyAdapter <: AbstractSearchAdapter
-    api_key::String = get(ENV, "TAVILY_API_KEY", "")
+    api_keys::Vector{String} = env_key_pool("TAVILY_API_KEY")
     max_results::Int = 5
 end
 
 function OpenCacheLayer.get_content(adapter::TavilyAdapter, query::String; num::Int=adapter.max_results)
-    response = HTTP.post(
-        "https://api.tavily.com/search",
-        ["Content-Type" => "application/json",
-         "Authorization" => "Bearer $(adapter.api_key)"],
-        JSON3.write(Dict(
-            "query" => query,
-            "max_results" => num
-        ))
-    )
-    
+    body = JSON3.write(Dict("query" => query, "max_results" => num))
+    response = try_keys(adapter.api_keys, "TAVILY_API_KEY") do key
+        HTTP.post(
+            "https://api.tavily.com/search",
+            ["Content-Type" => "application/json",
+             "Authorization" => "Bearer $key"],
+            body
+        )
+    end
+
     data = JSON3.read(response.body)
     timestamp = now()  # Single timestamp for all results
-    
+
     [SearchResult(
         result.title,
         result.url,
@@ -31,5 +31,5 @@ function OpenCacheLayer.get_content(adapter::TavilyAdapter, query::String; num::
     ) for result in data.results]
 end
 
-OpenCacheLayer.get_adapter_hash(adapter::TavilyAdapter) = 
-    "TAVILY_$(adapter.api_key[1:min(8,length(adapter.api_key))])"
+# Key-independent: rotating keys must not invalidate the cache.
+OpenCacheLayer.get_adapter_hash(adapter::TavilyAdapter) = "TAVILY"
