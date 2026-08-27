@@ -5,18 +5,18 @@ using Dates
 using OpenCacheLayer
 
 @kwdef struct GoogleAdapter <: AbstractSearchAdapter
-    api_key::String = get(ENV, "GOOGLE_API_KEY", "")
+    api_keys::Vector{String} = env_key_pool("GOOGLE_API_KEY")
     cx::String = get(ENV, "GOOGLE_CX", "")  # Custom Search Engine ID
 end
 
 function OpenCacheLayer.get_content(adapter::GoogleAdapter, query::String; num::Int=10)
-    url = "https://www.googleapis.com/customsearch/v1?" * 
-          "key=$(adapter.api_key)&" *
-          "cx=$(adapter.cx)&" *
-          "q=$(URIs.escapeuri(query))&" *
-          "num=$(num)"
-    
-    response = HTTP.get(url)
+    response = try_keys(adapter.api_keys, "GOOGLE_API_KEY") do key
+        HTTP.get("https://www.googleapis.com/customsearch/v1?" *
+                 "key=$(key)&" *
+                 "cx=$(adapter.cx)&" *
+                 "q=$(URIs.escapeuri(query))&" *
+                 "num=$(num)")
+    end
     data = JSON3.read(response.body)
     
     # Debug message to understand what's in the response
@@ -37,5 +37,5 @@ function OpenCacheLayer.get_content(adapter::GoogleAdapter, query::String; num::
     ) for (i, item) in enumerate(data.items)]
 end
 
-OpenCacheLayer.get_adapter_hash(adapter::GoogleAdapter) =
-    "GOOGLE_$(adapter.api_key[1:min(8,length(adapter.api_key))])"
+# Key-independent: rotating keys must not invalidate the cache.
+OpenCacheLayer.get_adapter_hash(adapter::GoogleAdapter) = "GOOGLE_$(adapter.cx)"
