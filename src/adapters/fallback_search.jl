@@ -1,5 +1,11 @@
 using OpenCacheLayer
 
+# TODO: evaluate Monid (https://monid.ai, launched 2026-08-27) as a free
+# last-resort adapter in this chain (Serper -> Tavily -> Monid). Free
+# search/fetch for agents on TinyFish infra, but 1 day old at time of
+# writing, rate limits undocumented, needs an API key despite the "no key"
+# marketing. Revisit ~2 weeks after launch; adapter is ~30 lines on the
+# env_key_pool/try_keys pattern in search_base.jl.
 @kwdef struct FallbackSearchAdapter <: AbstractSearchAdapter
     primary::AbstractSearchAdapter = SerpAdapter(engine="google")
     fallback::AbstractSearchAdapter = TavilyAdapter()
