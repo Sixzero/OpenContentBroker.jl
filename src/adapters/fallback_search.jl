@@ -1,6 +1,7 @@
 using OpenCacheLayer
 
-# TODO: evaluate Monid (https://monid.ai, launched 2026-08-27) as a free
+# TODO: evaluate Monid (https://monid.ai, launched 2026-08-27:
+# https://x.com/shengkunye/status/2093050916953903451) as a free
 # last-resort adapter in this chain (Serper -> Tavily -> Monid). Free
 # search/fetch for agents on TinyFish infra, but 1 day old at time of
 # writing, rate limits undocumented, needs an API key despite the "no key"
