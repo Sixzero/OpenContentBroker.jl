@@ -2,6 +2,7 @@ module OpenContentBroker
 
 using Dates
 using Base64
+using CondaPkg
 using HTTP
 using JSON3
 using LLMRateLimiters: TokenEstimationMethod, airatelimited, RateLimiterRPM, RateLimiterTPM, CharCountDivTwo, estimate_tokens

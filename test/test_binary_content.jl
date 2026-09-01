@@ -78,19 +78,18 @@ const RUN_NET = get(ENV, "OCB_NET_TESTS", "false") == "true"
         @test be("short error") == "short error"
     end
 
-    # Minimal single-page PDF built by pymupdf itself — no network, no fixture file.
+    # PDFs built by pymupdf itself — no network, no fixture file. Generated in a
+    # subprocess for the same reason extraction is: no in-process CPython/GIL.
     @testset "pdf_to_text" begin
-        PC = OpenContentBroker.PythonCall
-        m = OpenContentBroker.ensure_pymupdf()
         mkpdf(npages) = begin
-            doc = m.open()
-            for i in 1:npages
-                p = doc.new_page()
-                p.insert_text(PC.pytuple((72, 72)), "PAGE $i MARKER")
-            end
-            bytes = PC.pyconvert(Vector{UInt8}, doc.tobytes())
-            doc.close()
-            bytes
+            script = """
+            import sys, pymupdf
+            doc = pymupdf.open()
+            for i in range(1, $npages + 1):
+                doc.new_page().insert_text((72, 72), f"PAGE {i} MARKER")
+            sys.stdout.buffer.write(doc.tobytes())
+            """
+            read(`$(OpenContentBroker._python_exe()) -c $script`)
         end
 
         pdf = mkpdf(3)
@@ -110,6 +109,12 @@ const RUN_NET = get(ENV, "OCB_NET_TESTS", "false") == "true"
         @test length(short) < 100
         @test occursin("[truncated]", short)
         @test occursin("pages extracted", short)  # char cap stopped extraction early
+
+        # garbage in → error (bounded by the caller), never a hang or a crash
+        @test_throws ErrorException pdf_to_text(Vector{UInt8}("%PDF-1.7 not really a pdf"))
+
+        # a wedged child is killed, not waited on forever
+        @test_throws ErrorException pdf_to_text(pdf; timeout = 0.001)
     end
 
     @testset "adapter caps payload (network)" begin

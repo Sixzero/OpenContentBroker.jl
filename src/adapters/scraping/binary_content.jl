@@ -6,8 +6,6 @@
 # body back into the result. Here we sniff what actually came back and either
 # extract real text (PDF) or refuse, so a binary body can never inflate a tool result.
 
-using PythonCall
-
 const PDF_MAGIC = b"%PDF-"
 const SNIFF_WINDOW = 1_024   # bytes inspected for magic numbers
 const BINARY_WINDOW = 8_192  # bytes inspected for NUL (binary tell-tale)
@@ -83,35 +81,51 @@ function sniff_mime(headers, body::Vector{UInt8})
 end
 
 # --- PDF → text ------------------------------------------------------------
+#
+# Runs pymupdf in a SUBPROCESS, deliberately not via PythonCall in-process.
+# Tools execute inside `@async` tasks on a multithreaded agent (prod runs
+# `--threads=8,1`), and an in-process CPython holds the GIL for the whole
+# extraction: a Julia thread blocked in C never yields, so it can stall the
+# scheduler and wedge unrelated tasks. We hit that class of hang before.
+# A subprocess costs ~200ms of interpreter startup (vs ~80ms in-process) —
+# irrelevant next to the fetch and the summarizer call — and in exchange the
+# work is preemptible, crash-isolated, memory-isolated and timeout-able.
 
-const _pymupdf = Ref{Py}()
-function ensure_pymupdf()
-    isassigned(_pymupdf) || (_pymupdf[] = pyimport("pymupdf"))
-    _pymupdf[]
+const PDF_EXTRACT_PY = joinpath(@__DIR__, "pdf_extract.py")
+
+# The CondaPkg env owns pymupdf; fall back to whatever `python3` is on PATH.
+function _python_exe()
+    exe = joinpath(CondaPkg.envdir(), "bin", Sys.iswindows() ? "python.exe" : "python")
+    isfile(exe) ? exe : "python3"
 end
 
 """
-    pdf_to_text(bytes; max_pages, max_chars) -> String
+    pdf_to_text(bytes; max_pages, max_chars, timeout) -> String
 
-Extract the text layer of a PDF with pymupdf. Bounded by both page count and
-characters; anything dropped is flagged with `…[truncated]` so the summarizer (and
-the reader) know the extract is partial. Throws if pymupdf is unavailable.
+Extract the text layer of a PDF. Bounded by page count and characters; anything
+dropped is flagged with `…[truncated]` so the summarizer (and the reader) know the
+extract is partial. Throws if extraction fails or times out.
 """
-function pdf_to_text(bytes::Vector{UInt8}; max_pages::Int = 50, max_chars::Int = 200_000)
-    doc = ensure_pymupdf().open(stream = pybytes(bytes), filetype = "pdf")
-    try
-        npages = pyconvert(Int, doc.page_count)
-        parts, nchars, pages = String[], 0, 0
-        for i in 0:min(npages, max_pages)-1
-            push!(parts, pyconvert(String, doc[i].get_text()))
-            nchars += length(parts[end])
-            pages += 1
-            nchars > max_chars && break
-        end
-        text = truncate_chars(join(parts, "\n\n"), max_chars)
-        pages < npages && (text *= "\n\n…[truncated: $pages of $npages pages extracted]")
-        text
-    finally
-        doc.close()
+function pdf_to_text(bytes::Vector{UInt8}; max_pages::Int = 50, max_chars::Int = 200_000,
+                     timeout::Real = 60)
+    cmd = `$(_python_exe()) $PDF_EXTRACT_PY $max_pages $max_chars`
+    out, err = IOBuffer(), IOBuffer()
+    proc = run(pipeline(cmd; stdin = IOBuffer(bytes), stdout = out, stderr = err); wait = false)
+
+    # Kill rather than hang: a malformed PDF must not pin a tool slot forever.
+    waiter = @async(wait(proc))
+    if timedwait(() -> istaskdone(waiter), float(timeout); pollint = 0.05) === :timed_out
+        kill(proc, Base.SIGKILL)
+        error("PDF extraction timed out after $(timeout)s")
     end
+    success(proc) || error("PDF extraction failed: $(truncate_chars(String(take!(err)), 500))")
+
+    text = truncate_chars(String(take!(out)), max_chars)
+    # The child reports "<pages>/<npages>" on stderr so we can flag partial extracts.
+    m = match(r"pages=(\d+)/(\d+)", String(take!(err)))
+    if m !== nothing
+        pages, npages = parse(Int, m[1]), parse(Int, m[2])
+        pages < npages && (text *= "\n\n…[truncated: $pages of $npages pages extracted]")
+    end
+    text
 end
