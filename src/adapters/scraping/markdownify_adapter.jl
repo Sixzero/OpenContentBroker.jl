@@ -103,6 +103,12 @@ struct MarkdownifyContent <: AbstractWebContent
 end
 
 
+# Single funnel for every failure result, so no error path can leak an unbounded
+# payload (exception text, huge URL) into the conversation.
+_error_content(url::AbstractString, mime::AbstractString, code::String, msg::AbstractString) =
+    MarkdownifyContent(truncate_chars(url, 500), bounded_error(msg),
+        Dict{Symbol,Any}(:error => code, :mime => mime), now())
+
 function OpenCacheLayer.get_content(adapter::MarkdownifyAdapter, url::String)
     try
         # Fetch using HTTP.jl with timeout (retry=true is default; bump retries for transient task failures)
@@ -116,6 +122,24 @@ function OpenCacheLayer.get_content(adapter::MarkdownifyAdapter, url::String)
             url, "HTTP $(response.status)",
             Dict{Symbol,Any}(:error => "HTTP $(response.status)"), now()
         )
+
+        # Non-HTML bodies must never reach decode_html: its Latin-1 fallback never
+        # fails, so a PDF/binary would turn into megabytes of mojibake.
+        mime = sniff_mime(response.headers, response.body)
+        if mime == "application/pdf"
+            text = try
+                pdf_to_text(response.body; max_chars = adapter.max_content)
+            catch e
+                return _error_content(url, mime, "pdf_extract",
+                    "Failed to extract text from PDF: $(sprint(showerror, e))")
+            end
+            isempty(strip(text)) && return _error_content(url, mime, "pdf_no_text",
+                "PDF has no extractable text layer (likely a scanned document).")
+            return MarkdownifyContent(url, text, Dict{Symbol,Any}(:mime => mime), now())
+        elseif !_is_textual_mime(mime)
+            return _error_content(url, mime, "unsupported_content_type",
+                "Unsupported content type '$mime' (binary content is not fetched).")
+        end
 
         html_content = decode_html(response.body, response.headers)
 
@@ -136,7 +160,9 @@ function OpenCacheLayer.get_content(adapter::MarkdownifyAdapter, url::String)
         MarkdownifyContent(url, markdown_content, Dict{Symbol,Any}(), now())
         
     catch e
-        MarkdownifyContent(url, "Error: $e", Dict{Symbol,Any}(:error => string(e)), now())
+        # Bound the message: exception payloads can embed the whole response body —
+        # that is exactly how 2.5MB of PDF once reached an LLM request.
+        _error_content(url, "", "fetch_failed", "Error: $(sprint(showerror, e))")
     end
 end
 
@@ -146,4 +172,7 @@ OpenCacheLayer.is_cache_valid(content::MarkdownifyContent, adapter::MarkdownifyA
 
 OpenCacheLayer.get_timestamp(content::MarkdownifyContent) = content.timestamp
 
-OpenCacheLayer.get_adapter_hash(adapter::MarkdownifyAdapter) = "MARKDOWNIFY_JL"  # _JL: pure-Julia converter output differs from the old python-markdownify
+# _JL: pure-Julia converter output differs from the old python-markdownify.
+# _V2: content-type sniffing + PDF extraction — must not serve pre-fix cached
+# entries, which can still hold megabytes of binary mojibake.
+OpenCacheLayer.get_adapter_hash(adapter::MarkdownifyAdapter) = "MARKDOWNIFY_JL_V2"

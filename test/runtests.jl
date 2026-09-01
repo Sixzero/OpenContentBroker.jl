@@ -14,4 +14,5 @@ include("gmail_adapter.jl")
 
     include("gmail_sender_tool.jl")
     include("test_tag_extractor.jl")
+    include("test_binary_content.jl")
 end;

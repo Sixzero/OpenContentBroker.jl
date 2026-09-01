@@ -4,3 +4,4 @@
 [pip.deps]
 markdownify = ""
 gitingest = ">=0.1.0"
+pymupdf = ">=1.24"

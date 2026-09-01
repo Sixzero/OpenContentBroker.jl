@@ -11,6 +11,9 @@ export WebFetchTool
 
 const WEB_FETCH_TAG = "webfetch"
 
+# Hard byte ceiling on fetched content handed to the summarizer (~150K tokens worst case).
+const MAX_FETCH_BYTES = 600_000
+
 @kwdef mutable struct WebFetchToolCall <: EasyContext.AbstractTool
     _id::UUID = uuid4()
     url::String
@@ -46,11 +49,16 @@ function ToolCallFormat.execute(cmd::WebFetchToolCall, ctx::AbstractContext)
         return cmd
     end
 
+    # Last line of defence before the LLM request: adapters cap by characters, the
+    # provider limit is bytes (1-4x more for non-ASCII), and a stale cache entry can
+    # predate any cap. A single hard byte cap here keeps the tool result payload sane.
+    body = truncate_bytes(content.content, MAX_FETCH_BYTES)
+
     user_msg = """$(cmd.prompt)
 
 URL: $(cmd.url)
 Content:
-$(content.content)"""
+$(body)"""
 
     agent = create_FluidAgent(model;
         tools = [],
