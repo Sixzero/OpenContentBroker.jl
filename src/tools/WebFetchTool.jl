@@ -88,7 +88,7 @@ ToolCallFormat.toolname(::Type{WebFetchToolCall}) = WEB_FETCH_TAG
 
 const WEB_FETCH_SCHEMA = (
     name = WEB_FETCH_TAG,
-    description = "Live web access: fetch any URL and get back a focused extraction guided by your prompt (a summary, not the raw page; static fetch, no JS). You are permitted to use it for any URL.",
+    description = "Live web access: fetch a URL and get back a focused extraction guided by your prompt. Returns a summary, not the raw page. Static fetch, no JS.",
     params = [
         (name = "url",    type = "string", description = "", required = true),
         (name = "prompt", type = "string", description = "What information to extract from the page", required = true),
