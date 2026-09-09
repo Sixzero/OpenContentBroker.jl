@@ -13,17 +13,23 @@ using OpenCacheLayer
 end
 
 function OpenCacheLayer.get_content(adapter::FallbackSearchAdapter, query::String; kwargs...)
+    primary_err = nothing
     results = try
         OpenCacheLayer.get_content(adapter.primary, query; kwargs...)
     catch e
+        primary_err = e
         @warn "Primary search failed, falling back" exception=e
         SearchResult[]
     end
-    if isempty(results)
-        @info "Primary search empty, using fallback"
-        return OpenCacheLayer.get_content(adapter.fallback, query; kwargs...)
+    isempty(results) || return results
+    primary_err === nothing && @info "Primary search empty, using fallback"
+    try
+        OpenCacheLayer.get_content(adapter.fallback, query; kwargs...)
+    catch e
+        # Surface the primary failure too, otherwise a missing fallback key masks the real cause.
+        primary_err === nothing && rethrow()
+        error("Primary search failed: $(sprint(showerror, primary_err)); fallback failed: $(sprint(showerror, e))")
     end
-    results
 end
 
 OpenCacheLayer.get_adapter_hash(adapter::FallbackSearchAdapter) =

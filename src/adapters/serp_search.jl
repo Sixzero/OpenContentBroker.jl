@@ -23,7 +23,7 @@ function OpenCacheLayer.get_content(adapter::SerpAdapter, query::String; num::In
     timestamp = now()  # Single timestamp for all results
 
     # Process organic results
-    for result in data.organic
+    for result in get(data, :organic, [])
         push!(results, SearchResult(
             get(result, :title, ""),
             result.link,
