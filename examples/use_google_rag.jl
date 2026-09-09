@@ -3,7 +3,7 @@ using OpenCacheLayer
 
 # Initialize the adapter with default settings
 adapter = GoogleRAGAdapter()
-# adapter = TavilyAdapter()
+# adapter = JinaAdapter()
 
 # Test query
 query = "What is the privacy policy of Gwen Alibaba do they use data for training?"

@@ -18,7 +18,7 @@ function get_global_web_cache()
 end
 
 @kwdef struct GoogleRAGAdapter <: StatusBasedAdapter
-    google_adapter::AbstractSearchAdapter = FallbackSearchAdapter()
+    google_adapter::AbstractSearchAdapter = SerpAdapter(engine="google")
     chunker::HtmlChunker = HtmlChunker()
     rag_pipeline::AbstractRAGPipeline = EFFICIENT_PIPELINE(; model="gemfl")
     max_results::Int = 10

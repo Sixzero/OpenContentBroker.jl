@@ -23,11 +23,9 @@ include("chunks/HtmlChunker.jl")
 abstract type AbstractUrl2LLMAdapter <: StatusBasedAdapter end
 
 include("adapters/search_base.jl")
-include("adapters/tavily_search.jl")
 include("adapters/jina_search.jl")
 include("adapters/ddg_search.jl")
 include("adapters/serp_search.jl")
-include("adapters/fallback_search.jl")
 include("adapters/google_search.jl")
 include("adapters/google_rag.jl")
 
@@ -68,7 +66,7 @@ export GmailAdapter, GmailMessage
 export GmailSenderAdapter, GmailSenderTool
 export RawWebAdapter
 export WebScraperAdapter
-export TavilyAdapter, JinaAdapter, DDGAdapter, SerpAdapter, FallbackSearchAdapter, SearchResult, GoogleAdapter
+export JinaAdapter, DDGAdapter, SerpAdapter, SearchResult, GoogleAdapter
 export FirecrawlAdapter, CrawleeAdapter, ScrapyAdapter, MarkdownifyAdapter
 export AIRelevanceStrategy
 export GoogleSearchTool

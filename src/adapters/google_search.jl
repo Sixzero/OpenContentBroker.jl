@@ -15,7 +15,7 @@ function OpenCacheLayer.get_content(adapter::GoogleAdapter, query::String; num::
                  "key=$(key)&" *
                  "cx=$(adapter.cx)&" *
                  "q=$(URIs.escapeuri(query))&" *
-                 "num=$(num)")
+                 "num=$(num)"; retry=false)
     end
     data = JSON3.read(response.body)
     

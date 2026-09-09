@@ -4,7 +4,6 @@ using OpenCacheLayer
 using Dates
 
 # Initialize adapters
-tavily = TavilyAdapter()
 jina = JinaAdapter()
 serp_google = SerpAdapter(engine="google")
 serp_bing = SerpAdapter(engine="bing")
@@ -13,7 +12,6 @@ ddg = DDGAdapter()
 google = GoogleAdapter()
 
 # Wrap with cache
-cached_tavily = DictCacheLayer(tavily)
 cached_jina = DictCacheLayer(jina)
 cached_serp_google = DictCacheLayer(serp_google)
 cached_serp_bing = DictCacheLayer(serp_bing)
@@ -29,7 +27,6 @@ function search_and_compare(query::String)
     println("=" ^ 50)
     
     # Search with all engines
-    @time tavily_results = get_content(cached_tavily, query)
     @time serp_google_results = get_content(cached_serp_google, query)
     @time serp_bing_results = get_content(cached_serp_bing, query)
     @time serp_yandex_results = get_content(cached_serp_yandex, query)
@@ -38,7 +35,6 @@ function search_and_compare(query::String)
     
     # Collect results for evaluation
     results_by_engine = Dict(
-        "Tavily" => tavily_results,
         "SERP_Google" => serp_google_results,
         "SERP_Bing" => serp_bing_results,
         "SERP_Yandex" => serp_yandex_results,

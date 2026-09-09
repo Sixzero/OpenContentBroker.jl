@@ -14,7 +14,7 @@ function OpenCacheLayer.get_content(adapter::SerpAdapter, query::String; num::In
         HTTP.post(
             "https://google.serper.dev/search?engine=$(adapter.engine)",
             ["X-API-KEY" => key, "Content-Type" => "application/json"],
-            body
+            body; retry=false
         )
     end
 

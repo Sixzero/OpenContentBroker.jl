@@ -73,7 +73,6 @@ const DEFAULT_QUERIES = [
 
 function init_engines()
     Dict(
-        "Tavily" => DictCacheLayer(TavilyAdapter()),
         # "SERP_Google" => DictCacheLayer(SerpAdapter(engine="google")),
         "SERP_Bing" => DictCacheLayer(SerpAdapter(engine="bing")),
         "SERP_Yandex" => DictCacheLayer(SerpAdapter(engine="yandex")),

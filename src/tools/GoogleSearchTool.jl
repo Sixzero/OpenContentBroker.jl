@@ -1,11 +1,11 @@
 using ToolCallFormat: @deftool
 
 # Lazy-initialized adapter (reads ENV at first use, not precompile time)
-# Serper first (cheap Google SERP); Tavily if Serper is empty/out of credits.
+# Serper (Google SERP); keys rotate + retry in try_keys.
 const _google_search_adapter_ref = Ref{Union{Nothing,AbstractSearchAdapter}}(nothing)
 function GOOGLE_SEARCH_ADAPTER()
     if _google_search_adapter_ref[] === nothing
-        _google_search_adapter_ref[] = FallbackSearchAdapter()
+        _google_search_adapter_ref[] = SerpAdapter(engine="google")
     end
     _google_search_adapter_ref[]
 end
