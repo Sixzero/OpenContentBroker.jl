@@ -68,7 +68,7 @@ function keys_exhausted(name, err)
     # Detail (provider reason) goes to ops via the hook + log; the thrown message is what the
     # end user / agent sees — they can't fix our credits, so tell them what they *can* do.
     @error "$name exhausted" error=error_brief(err)
-    error("web search is temporarily unavailable on our side (the team has been notified) — try again later or use webfetch on a known URL")
+    error("web search is temporarily unavailable on our side (the team has been notified, error code SEARCH_QUOTA) — try again later or use webfetch on a known URL")
 end
 
 """
@@ -85,7 +85,7 @@ function try_keys(f::Function, keys::Vector{String}, name::String; retries::Int=
                 return f(key)
             catch e
                 e isa InterruptException && rethrow()
-                is_key_error(e) || error("search provider rejected the request — $(error_brief(e))")
+                is_key_error(e) || error("search provider rejected the request (error code SEARCH_BAD_REQUEST) — $(error_brief(e))")
                 retry = attempt < retries && is_transient(e)
                 retry || i < length(keys) || keys_exhausted(name, e)
                 @warn "$name #$i failed, $(retry ? "retrying" : "trying next")" error=error_brief(e)
