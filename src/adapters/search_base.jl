@@ -65,8 +65,10 @@ const ON_KEYS_EXHAUSTED = Ref{Function}((name, err) -> nothing)
 
 function keys_exhausted(name, err)
     try ON_KEYS_EXHAUSTED[](name, err) catch e; @warn "ON_KEYS_EXHAUSTED hook failed" error=error_brief(e) end
-    # Sanitized: the raw error would surface the request (incl. key) in tool output.
-    error("search provider quota exhausted or rate limited — $(error_brief(err))")
+    # Detail (provider reason) goes to ops via the hook + log; the thrown message is what the
+    # end user / agent sees — they can't fix our credits, so tell them what they *can* do.
+    @error "$name exhausted" error=error_brief(err)
+    error("web search is temporarily unavailable on our side (the team has been notified) — try again later or use webfetch on a known URL")
 end
 
 """
