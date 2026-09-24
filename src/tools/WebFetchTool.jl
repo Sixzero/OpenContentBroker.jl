@@ -1,7 +1,7 @@
 # WebFetchTool - Fetch URL + summarize via LLM (like SummarizeTool but for URLs)
 #
 # Reuses WEB_CONTENT_ADAPTER (MarkdownifyAdapter) for fetching,
-# sends content + prompt to haiku for focused extraction.
+# sends content + prompt to gpt-6-luna for focused extraction (picked by agent/bench/webfetch r1).
 
 using EasyContext: AbstractToolGenerator, create_FluidAgent, NativeExtractor, work, LLM_safetorun
 import ToolCallFormat
@@ -34,7 +34,7 @@ You are the summarization step of a webfetch tool. The page was already fetched 
 Extract what the user's prompt asks for from the content. Be concise, accurate, and output only the relevant information."""
 
 function ToolCallFormat.execute(cmd::WebFetchToolCall, ctx::AbstractContext)
-    model = something(cmd.model, "anthropic:anthropic/claude-haiku-4.5")
+    model = something(cmd.model, "openai:openai/gpt-6-luna")
 
     content = try
         OpenCacheLayer.get_content(get_web_content_adapter(), cmd.url)
